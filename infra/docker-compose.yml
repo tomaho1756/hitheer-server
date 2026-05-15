@@ -1,0 +1,11 @@
+services:
+  coturn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    # host networking is the simplest path for TURN since the relay
+    # port range needs to be reachable end-to-end. On macOS Docker Desktop
+    # host networking has caveats — prefer `brew install coturn` for local dev.
+    network_mode: host
+    volumes:
+      - ./coturn/turnserver.conf.rendered:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
