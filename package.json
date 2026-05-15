@@ -1,0 +1,12 @@
+{
+  "name": "hithere",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @hithere/web dev",
+    "dev:signaling": "cargo run --manifest-path apps/signaling/Cargo.toml",
+    "build:web": "pnpm --filter @hithere/web build",
+    "build:signaling": "cargo build --release --manifest-path apps/signaling/Cargo.toml"
+  },
+  "packageManager": "pnpm@10.11.0"
+}
