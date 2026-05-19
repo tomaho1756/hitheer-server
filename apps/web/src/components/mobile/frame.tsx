@@ -20,7 +20,7 @@ const T = {
   accentSoft: "#e8f8ee",
 };
 
-const HEADER_H = 52;
+const HEADER_H = 62;
 const TABBAR_H = 64;
 
 export interface TabDef {
@@ -77,6 +77,7 @@ export function MobileFrame({
 }
 
 function MobileHeader({ title }: { title?: string }) {
+  const pageTitle = title && title !== "hithere" ? title : null;
   return (
     <header
       className="app-safe-top"
@@ -87,17 +88,19 @@ function MobileHeader({ title }: { title?: string }) {
         right: 0,
         height: HEADER_H,
         zIndex: 50,
-        background: "rgba(255,255,255,0.85)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
-        boxShadow: "0 1px 0 rgba(15,23,42,0.06)",
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.86) 100%)",
+        backdropFilter: "saturate(160%) blur(18px)",
+        WebkitBackdropFilter: "saturate(160%) blur(18px)",
         display: "flex",
         alignItems: "center",
         padding: "0 16px",
-        gap: 10,
+        gap: 12,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0 }}
+      >
         <div
           style={{
             width: 26,
@@ -116,20 +119,58 @@ function MobileHeader({ title }: { title?: string }) {
         >
           h
         </div>
-        <span
+        <div
           style={{
-            fontSize: 15,
-            fontWeight: 700,
-            letterSpacing: -0.2,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            lineHeight: 1.1,
           }}
         >
-          {title ?? "hithere"}
-        </span>
+          <span
+            style={{
+              fontSize: 17,
+              fontWeight: 900,
+              letterSpacing: -0.3,
+              color: T.text,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            hithere
+          </span>
+          <span
+            style={{
+              marginTop: 2,
+              fontSize: 10.5,
+              fontWeight: 700,
+              letterSpacing: 0.4,
+              textTransform: "uppercase",
+              color: pageTitle ? T.accentDeep : T.textMuted,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {pageTitle ?? "Realtime translate"}
+          </span>
+        </div>
       </div>
       <AccountPill returnTo="/" />
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 1,
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(3,199,90,0.18) 50%, transparent 100%)",
+          pointerEvents: "none",
+        }}
+      />
     </header>
   );
 }

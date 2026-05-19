@@ -119,8 +119,28 @@ export function MobileHistory() {
 function EmptyState() {
   return (
     <div style={{ textAlign: "center", color: T.textMuted, padding: "60px 16px" }}>
-      <div style={{ fontSize: 40, marginBottom: 8 }}>📝</div>
-      <p style={{ fontSize: 14, margin: 0 }}>아직 대화 기록이 없어요</p>
+      <div
+        style={{
+          width: 64,
+          height: 64,
+          margin: "0 auto 14px",
+          borderRadius: 18,
+          background: T.accentSoft,
+          color: T.accentDeep,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+          <path d="M14 3v5h5M9 13h6M9 17h4" />
+        </svg>
+      </div>
+      <p style={{ fontSize: 14, margin: 0, color: T.text, fontWeight: 600 }}>
+        아직 대화 기록이 없어요
+      </p>
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 6 }}>
         매칭이나 방 만들기로 첫 통화를 시작해보세요.
       </p>

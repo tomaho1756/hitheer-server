@@ -38,8 +38,9 @@ export function MobileHome() {
     setHydrated(true);
   }, []);
 
-  const toggle = (list: string[], setList: (v: string[]) => void, code: string) => {
-    setList(list.includes(code) ? list.filter((c) => c !== code) : [...list, code]);
+  const pick = (current: string[], setter: (v: string[]) => void, code: string) => {
+    // Single-select: tap same code to clear, otherwise replace.
+    setter(current[0] === code ? [] : [code]);
   };
 
   const canMatch = speaks.length > 0 && wants.length > 0;
@@ -150,12 +151,12 @@ export function MobileHome() {
         </section>
 
         <section style={{ marginTop: 22 }}>
-          <Label>내가 할 수 있는 언어</Label>
-          <ChipRow codes={speaks} toggle={(c) => toggle(speaks, setSpeaks, c)} />
+          <Label>내가 할 수 있는 언어 (1개만)</Label>
+          <ChipRow codes={speaks} onPick={(c) => pick(speaks, setSpeaks, c)} />
         </section>
         <section style={{ marginTop: 18 }}>
-          <Label>연습하고 싶은 언어</Label>
-          <ChipRow codes={wants} toggle={(c) => toggle(wants, setWants, c)} />
+          <Label>연습하고 싶은 언어 (1개만)</Label>
+          <ChipRow codes={wants} onPick={(c) => pick(wants, setWants, c)} />
         </section>
 
         <section
@@ -170,14 +171,14 @@ export function MobileHome() {
             primary
             disabled={!canMatch || !hydrated}
             onClick={startRandomMatch}
-            icon="🎲"
+            icon={<ShuffleIcon />}
             title="랜덤 매칭"
             sub="대기 풀에서 자동으로 연결"
           />
           <BigButton
             disabled={!canMatch || !hydrated}
             onClick={startNewRoom}
-            icon="🚪"
+            icon={<DoorIcon />}
             title="방 만들기"
             sub="링크 공유 · 회의용"
           />
@@ -217,7 +218,7 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ChipRow({ codes, toggle }: { codes: string[]; toggle: (c: string) => void }) {
+function ChipRow({ codes, onPick }: { codes: string[]; onPick: (c: string) => void }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
       {LANGUAGES.map((l) => {
@@ -225,7 +226,7 @@ function ChipRow({ codes, toggle }: { codes: string[]; toggle: (c: string) => vo
         return (
           <button
             key={l.code}
-            onClick={() => toggle(l.code)}
+            onClick={() => onPick(l.code)}
             style={{
               padding: "8px 14px",
               background: sel ? T.accent : T.surfaceChip,
@@ -259,7 +260,7 @@ function BigButton({
   primary?: boolean;
   disabled?: boolean;
   onClick: () => void;
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   sub: string;
 }) {
@@ -296,11 +297,11 @@ function BigButton({
     >
       <div
         style={{
-          fontSize: 26,
           width: 44,
           height: 44,
           borderRadius: 12,
           background: primary && !disabled ? "rgba(255,255,255,0.18)" : T.accentSoft,
+          color: primary && !disabled ? "white" : T.accentDeep,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -315,5 +316,23 @@ function BigButton({
       </div>
       <span style={{ fontSize: 16, opacity: 0.7 }}>→</span>
     </button>
+  );
+}
+
+function ShuffleIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M16 3h5v5M4 20l17-17M21 16v5h-5M15 15l6 6M4 4l5 5" />
+    </svg>
+  );
+}
+
+function DoorIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M14 12h.01" />
+    </svg>
   );
 }

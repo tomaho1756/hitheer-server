@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -29,15 +29,16 @@ export function MobilePromo() {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroLine1Ref = useRef<HTMLHeadingElement>(null);
   const heroLine2Ref = useRef<HTMLHeadingElement>(null);
+  const heroLine3Ref = useRef<HTMLHeadingElement>(null);
   const heroBadgeRef = useRef<HTMLDivElement>(null);
   const heroSubRef = useRef<HTMLParagraphElement>(null);
   const orbARef = useRef<HTMLDivElement>(null);
   const orbBRef = useRef<HTMLDivElement>(null);
 
   useIsoLayoutEffect(() => {
-    if (!heroLine1Ref.current || !heroLine2Ref.current) return;
+    if (!heroLine1Ref.current || !heroLine2Ref.current || !heroLine3Ref.current) return;
 
-    // Split only line 1 into chars. Line 2 has gradient text (background-clip: text),
+    // Split lines 1+2 into chars. Line 3 has gradient text (background-clip: text),
     // which breaks when each char becomes its own inline-block w/ transforms — keep it whole.
     const splitChars = (el: HTMLElement) => {
       const text = el.dataset.text || el.textContent || "";
@@ -57,35 +58,35 @@ export function MobilePromo() {
     };
 
     const c1 = splitChars(heroLine1Ref.current);
+    const c2 = splitChars(heroLine2Ref.current);
 
     const ctx = gsap.context(() => {
-      gsap.set(c1, { opacity: 0, y: 40, rotateX: -90 });
-      gsap.set(heroLine2Ref.current, { opacity: 0, y: 30 });
+      gsap.set([...c1, ...c2], { opacity: 0, y: 40, rotateX: -90 });
+      gsap.set(heroLine3Ref.current, { opacity: 0, y: 30 });
       gsap.set(heroBadgeRef.current, { opacity: 0, y: -8 });
       gsap.set(heroSubRef.current, { opacity: 0, y: 14 });
 
       const tl = gsap.timeline({ delay: 0.05 });
       tl.to(heroBadgeRef.current, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" });
       tl.to(
-        c1,
+        [...c1, ...c2],
         {
           opacity: 1,
           y: 0,
           rotateX: 0,
-          duration: 0.75,
+          duration: 0.7,
           ease: "power3.out",
-          stagger: 0.03,
+          stagger: 0.035,
         },
         "-=0.25"
       );
       tl.to(
-        heroLine2Ref.current,
+        heroLine3Ref.current,
         { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" },
-        "-=0.35"
+        "-=0.3"
       );
       tl.to(heroSubRef.current, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, "-=0.3");
 
-      // Continuous floating orbs in the hero
       if (orbARef.current) {
         gsap.to(orbARef.current, {
           x: 20, y: -10, duration: 6, ease: "sine.inOut", yoyo: true, repeat: -1,
@@ -97,7 +98,6 @@ export function MobilePromo() {
         });
       }
 
-      // Scroll reveals on everything tagged with data-reveal
       const blocks = rootRef.current?.querySelectorAll<HTMLElement>("[data-reveal]") ?? [];
       blocks.forEach((el) => {
         gsap.from(el, {
@@ -116,11 +116,11 @@ export function MobilePromo() {
   return (
     <MobileFrame title="hithere 소개" contentBg={T.surface}>
       <div ref={rootRef} style={{ flex: 1 }}>
-        {/* HERO — dark gradient + floating orbs + GSAP letter reveal */}
+        {/* HERO */}
         <section
           style={{
             position: "relative",
-            padding: "50px 18px 56px",
+            padding: "56px 18px 64px",
             background:
               "radial-gradient(ellipse at 30% 0%, #1a1a1a 0%, #0a0a0a 60%, #050505 100%)",
             color: "white",
@@ -176,37 +176,32 @@ export function MobilePromo() {
               letterSpacing: 0.5,
               textTransform: "uppercase",
               borderRadius: 999,
-              marginBottom: 20,
+              marginBottom: 22,
               boxShadow: "inset 0 0 0 1px rgba(3,199,90,0.25)",
             }}
           >
-            ⚡ Powered by OpenAI Realtime
+            <BoltIcon />
+            Powered by OpenAI Realtime
           </div>
           <h1
             ref={heroLine1Ref}
-            data-text="ANY LANGUAGE,"
-            style={{
-              position: "relative",
-              margin: 0,
-              fontSize: "clamp(38px, 12vw, 60px)",
-              fontWeight: 900,
-              letterSpacing: "-0.035em",
-              lineHeight: 0.98,
-              color: "white",
-            }}
+            data-text="ANY"
+            style={heroLineStyle}
           >
-            ANY LANGUAGE,
+            ANY
           </h1>
           <h1
             ref={heroLine2Ref}
+            data-text="LANGUAGE"
+            style={heroLineStyle}
+          >
+            LANGUAGE
+          </h1>
+          <h1
+            ref={heroLine3Ref}
             data-text="TRANSLATED."
             style={{
-              position: "relative",
-              margin: 0,
-              fontSize: "clamp(38px, 12vw, 60px)",
-              fontWeight: 900,
-              letterSpacing: "-0.035em",
-              lineHeight: 0.98,
+              ...heroLineStyle,
               background: "linear-gradient(135deg, #03C75A 0%, #5ee49b 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -219,7 +214,7 @@ export function MobilePromo() {
             ref={heroSubRef}
             style={{
               position: "relative",
-              margin: "20px auto 0",
+              margin: "22px auto 0",
               maxWidth: 320,
               fontSize: 14,
               lineHeight: 1.55,
@@ -230,31 +225,34 @@ export function MobilePromo() {
           </p>
         </section>
 
-        {/* Features — shadow only, no borders, tinted icon tile per item */}
-        <section style={{ padding: "32px 18px 12px" }}>
+        {/* Features */}
+        <section style={{ padding: "34px 18px 12px" }}>
           <SectionTitle>뭐가 다른가요?</SectionTitle>
           <FeatureCard
             tint="#e8f8ee"
-            emoji="🌐"
+            iconColor="#03C75A"
+            icon={<GlobeIcon />}
             title="실시간 번역"
             desc="OpenAI Realtime API. 토큰 단위로 자막이 흘러내려요."
           />
           <FeatureCard
             tint="#eef0ff"
-            emoji="🎬"
+            iconColor="#5b6cff"
+            icon={<VideoIcon />}
             title="P2P 영상 통화"
             desc="WebRTC로 직접 연결. 서버 안 거쳐서 지연도 낮음."
           />
           <FeatureCard
             tint="#fff3e8"
-            emoji="📝"
+            iconColor="#e8810f"
+            icon={<DocIcon />}
             title="자동 기록"
             desc="원문 + 번역 모두 저장. 나중에 다시 보면서 복습."
           />
         </section>
 
-        {/* Stats — borderless cards in a grid */}
-        <section style={{ padding: "12px 18px 24px" }}>
+        {/* Stats */}
+        <section style={{ padding: "12px 18px 26px" }}>
           <div
             data-reveal
             style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}
@@ -265,16 +263,34 @@ export function MobilePromo() {
           </div>
         </section>
 
-        {/* Use cases — warm bg section, borderless cards */}
-        <section style={{ padding: "32px 18px 12px", background: T.surfaceWarm }}>
+        {/* Use cases */}
+        <section style={{ padding: "34px 18px 12px", background: T.surfaceWarm }}>
           <SectionTitle>이런 때 써보세요</SectionTitle>
-          <UseCaseRow tag="여행" emoji="✈️" body="외국 친구한테 링크 보내고 모국어 그대로 수다" />
-          <UseCaseRow tag="학습" emoji="🗣️" body="원어민과 매칭 → 실전 회화 + 자막 피드백" />
-          <UseCaseRow tag="업무" emoji="💼" body="다국적 미팅. 대화 기록은 회의록 초안" />
+          <UseCaseRow
+            tag="여행"
+            iconColor="#5b6cff"
+            tint="#eef0ff"
+            icon={<PlaneIcon />}
+            body="외국 친구한테 링크 보내고 모국어 그대로 수다"
+          />
+          <UseCaseRow
+            tag="학습"
+            iconColor="#03C75A"
+            tint="#e8f8ee"
+            icon={<ChatIcon />}
+            body="원어민과 매칭 → 실전 회화 + 자막 피드백"
+          />
+          <UseCaseRow
+            tag="업무"
+            iconColor="#e8810f"
+            tint="#fff3e8"
+            icon={<BriefcaseIcon />}
+            body="다국적 미팅. 대화 기록은 회의록 초안"
+          />
         </section>
 
         {/* CTA */}
-        <section style={{ padding: "30px 18px 40px", background: T.surfaceWarm }}>
+        <section style={{ padding: "30px 18px 20px", background: T.surfaceWarm }}>
           <button
             data-reveal
             onClick={() => router.push("/")}
@@ -291,15 +307,63 @@ export function MobilePromo() {
               boxShadow:
                 "0 10px 26px rgba(3,199,90,0.45), 0 2px 6px rgba(3,199,90,0.3)",
               fontFamily: "inherit",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
             }}
           >
-            지금 시작하기 →
+            지금 시작하기
+            <ArrowRightIcon />
           </button>
+        </section>
+
+        {/* Credit */}
+        <section
+          style={{
+            padding: "16px 18px 40px",
+            background: T.surfaceWarm,
+            textAlign: "center",
+          }}
+        >
+          <a
+            href="https://github.com/tomaho1756"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 14px",
+              borderRadius: 999,
+              background: "rgba(15,23,42,0.05)",
+              color: T.textMuted,
+              textDecoration: "none",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <GithubIcon />
+            Made by <strong style={{ color: T.text, fontWeight: 800 }}>@tomaho1756</strong>
+          </a>
+          <div style={{ marginTop: 8, fontSize: 10.5, color: T.textFaint }}>
+            TOMAHO · hithere v0.1.0 (beta)
+          </div>
         </section>
       </div>
     </MobileFrame>
   );
 }
+
+const heroLineStyle: React.CSSProperties = {
+  position: "relative",
+  margin: 0,
+  fontSize: "clamp(40px, 14vw, 64px)",
+  fontWeight: 900,
+  letterSpacing: "-0.035em",
+  lineHeight: 0.96,
+  color: "white",
+};
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -320,12 +384,14 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function FeatureCard({
   tint,
-  emoji,
+  iconColor,
+  icon,
   title,
   desc,
 }: {
   tint: string;
-  emoji: string;
+  iconColor: string;
+  icon: ReactNode;
   title: string;
   desc: string;
 }) {
@@ -349,14 +415,14 @@ function FeatureCard({
           height: 44,
           borderRadius: 12,
           background: tint,
+          color: iconColor,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 22,
           flexShrink: 0,
         }}
       >
-        {emoji}
+        {icon}
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{title}</div>
@@ -368,7 +434,19 @@ function FeatureCard({
   );
 }
 
-function UseCaseRow({ tag, emoji, body }: { tag: string; emoji: string; body: string }) {
+function UseCaseRow({
+  tag,
+  tint,
+  iconColor,
+  icon,
+  body,
+}: {
+  tag: string;
+  tint: string;
+  iconColor: string;
+  icon: ReactNode;
+  body: string;
+}) {
   return (
     <div
       data-reveal
@@ -383,7 +461,21 @@ function UseCaseRow({ tag, emoji, body }: { tag: string; emoji: string; body: st
         boxShadow: "0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.03)",
       }}
     >
-      <div style={{ fontSize: 22 }}>{emoji}</div>
+      <div
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 10,
+          background: tint,
+          color: iconColor,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -436,5 +528,76 @@ function StatCell({ value, label }: { value: string; label: string }) {
         {label}
       </div>
     </div>
+  );
+}
+
+// ─── Icons (line style, currentColor) ──────────────────────────
+function BoltIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
+    </svg>
+  );
+}
+function GlobeIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </svg>
+  );
+}
+function VideoIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2.5" y="6" width="13" height="12" rx="2.2" />
+      <path d="m15.5 10 6-3v10l-6-3z" />
+    </svg>
+  );
+}
+function DocIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" />
+    </svg>
+  );
+}
+function PlaneIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M22 12 3 19l3-7-3-7z" />
+      <path d="M6 12h16" />
+    </svg>
+  );
+}
+function ChatIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
+      <path d="M8.5 12h.01M12 12h.01M15.5 12h.01" />
+    </svg>
+  );
+}
+function BriefcaseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
+    </svg>
+  );
+}
+function ArrowRightIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
   );
 }
