@@ -1,5 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Pin tracing to this directory so Next.js doesn't pick the workspace root
+  // when both apps/web/pnpm-lock.yaml and ../../pnpm-lock.yaml exist.
+  outputFileTracingRoot: __dirname,
   allowedDevOrigins: ["192.168.0.35", "192.168.0.9", "192.168.219.102"],
   async rewrites() {
     return [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -18,7 +18,7 @@ import {
   NotConfigured,
   PrimaryButton,
   SecondaryButton,
-} from "../signin/page";
+} from "@/lib/auth-ui";
 
 const BORDER = "#e5e7eb";
 const SURFACE = "#ffffff";
@@ -27,6 +27,14 @@ const TEXT_MUTED = "#65676b";
 const ACCENT_DEEP = "#02a949";
 
 export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
+  );
+}
+
+function SignUpForm() {
   const router = useRouter();
   const search = useSearchParams();
   const next = search.get("next") || "/";
