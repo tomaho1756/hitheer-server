@@ -162,12 +162,32 @@ function NavLink({
 // ─── Hero ────────────────────────────────────────────────────────────
 function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const line1Ref = useRef<HTMLHeadingElement>(null);
   const line2Ref = useRef<HTMLHeadingElement>(null);
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
   const badgeRef = useRef<HTMLDivElement>(null);
+
+  // Force-mute on every paint — React's `muted` JSX prop is sometimes dropped
+  // by SSR/hydration so we re-assert it here. Bullet-proof against browsers
+  // that try to autoplay with sound after a user gesture.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.volume = 0;
+    v.defaultMuted = true;
+    v.setAttribute("muted", "");
+    // Re-enforce whenever someone (or the browser) toggles it.
+    const enforce = () => {
+      v.muted = true;
+      v.volume = 0;
+    };
+    v.addEventListener("volumechange", enforce);
+    return () => v.removeEventListener("volumechange", enforce);
+  }, []);
 
   useIsoLayoutEffect(() => {
     if (!line1Ref.current || !line2Ref.current) return;
@@ -257,10 +277,12 @@ function Hero() {
     >
       {/* Background video */}
       <video
+        ref={videoRef}
         autoPlay
         muted
         loop
         playsInline
+        preload="auto"
         data-bg=""
         style={{
           position: "absolute",
@@ -273,58 +295,27 @@ function Hero() {
       >
         <source src="/hero_video.mp4" type="video/mp4" />
       </video>
-      {/* Tint + vignette to keep text legible regardless of video brightness */}
+      {/* ── Layer A: cutout headlines (multiply over the video) ──
+          The medium-gray bg dims the video everywhere; the text itself,
+          rendered white / soft-green inside this layer, multiplies back to
+          near-original video color so the text shape acts as a "window".
+          Tuned so the dim is noticeable but the surroundings aren't muddy. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background: "#1a1a1a",
+          background: "#3a3a3a",
           mixBlendMode: "multiply",
           zIndex: 1,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 100%)",
-          zIndex: 2,
-        }}
-      />
-
-      {/* Content */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 3,
-          textAlign: "center",
-          maxWidth: 1200,
-          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 20px",
+          pointerEvents: "none",
         }}
       >
-        <div
-          ref={badgeRef}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "5px 13px",
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            backdropFilter: "blur(6px)",
-            color: "white",
-            borderRadius: 999,
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: 0.5,
-            textTransform: "uppercase",
-            marginBottom: 24,
-          }}
-        >
-          ⚡ Powered by OpenAI Realtime
-        </div>
-
+        <Spacer height={50} />
         <h1
           ref={line1Ref}
           data-text="ANY LANGUAGE,"
@@ -335,6 +326,7 @@ function Hero() {
             letterSpacing: "-0.045em",
             fontSize: "clamp(56px, 13vw, 200px)",
             color: "white",
+            textAlign: "center",
           }}
         >
           ANY LANGUAGE,
@@ -348,7 +340,82 @@ function Hero() {
             lineHeight: 0.92,
             letterSpacing: "-0.045em",
             fontSize: "clamp(56px, 13vw, 200px)",
-            color: ACCENT,
+            // Soft green: multiplied with bright video gives a translucent
+            // green tint rather than a solid green block.
+            color: "#a8e0bb",
+            textAlign: "center",
+          }}
+        >
+          ONE CALL.
+        </h1>
+        <Spacer height={220} />
+      </div>
+
+      {/* ── Layer B: regular UI (no blend) ──
+          Mirrors the layout but with invisible spacers in the headline slots
+          so the badge / subtitle / CTAs land in the right vertical positions. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 20px",
+          textAlign: "center",
+        }}
+      >
+        <div
+          ref={badgeRef}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 13px",
+            background: "rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            color: "white",
+            borderRadius: 999,
+            fontSize: 11.5,
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            textTransform: "uppercase",
+            marginBottom: 16,
+          }}
+        >
+          ⚡ Powered by OpenAI Realtime
+        </div>
+
+        {/* Invisible placeholders matching the headlines so the rest of the UI
+            lines up under the cutout text. */}
+        <h1
+          aria-hidden
+          style={{
+            margin: 0,
+            fontWeight: 900,
+            lineHeight: 0.92,
+            letterSpacing: "-0.045em",
+            fontSize: "clamp(56px, 13vw, 200px)",
+            visibility: "hidden",
+            pointerEvents: "none",
+          }}
+        >
+          ANY LANGUAGE,
+        </h1>
+        <h1
+          aria-hidden
+          style={{
+            margin: 0,
+            fontWeight: 900,
+            lineHeight: 0.92,
+            letterSpacing: "-0.045em",
+            fontSize: "clamp(56px, 13vw, 200px)",
+            visibility: "hidden",
+            pointerEvents: "none",
           }}
         >
           ONE CALL.
@@ -361,7 +428,8 @@ function Hero() {
             maxWidth: 580,
             fontSize: 17,
             lineHeight: 1.55,
-            color: "rgba(255,255,255,0.85)",
+            color: "rgba(255,255,255,0.9)",
+            textShadow: "0 1px 8px rgba(0,0,0,0.4)",
           }}
         >
           전 세계 누구와도 모국어 그대로 대화하세요. 말하는 즉시 상대방 언어로 번역돼 자막으로
@@ -371,7 +439,7 @@ function Hero() {
         <div
           ref={ctaRef}
           style={{
-            marginTop: 36,
+            marginTop: 30,
             display: "flex",
             gap: 12,
             justifyContent: "center",
@@ -400,8 +468,9 @@ function Hero() {
               padding: "14px 24px",
               background: "rgba(255,255,255,0.08)",
               backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
               color: "white",
-              border: "1px solid rgba(255,255,255,0.25)",
+              border: "1px solid rgba(255,255,255,0.3)",
               borderRadius: 999,
               fontSize: 15,
               fontWeight: 600,
@@ -450,6 +519,10 @@ function Hero() {
       </div>
     </section>
   );
+}
+
+function Spacer({ height }: { height: number }) {
+  return <div aria-hidden style={{ height, flexShrink: 0 }} />;
 }
 
 // ─── Intro / Transition section ──────────────────────────────────────
