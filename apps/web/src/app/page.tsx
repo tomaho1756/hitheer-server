@@ -38,11 +38,10 @@ export default function HomePage() {
       <NavBar />
       <Hero />
       <Intro />
-      <Features />
-      <HowItWorks />
+      <Stats />
+      <UseCases />
       <MatchSection />
       <FAQ />
-      <FinalCTA />
       <Footer />
     </div>
   );
@@ -290,197 +289,39 @@ function Hero() {
           width: "100%",
           height: "100%",
           objectFit: "cover",
+          // Soft blur on the video so faces / details stay abstract. The
+          // cutout headlines still reveal the blurred frame, which reads as
+          // a moving, ambient background.
+          filter: "blur(14px) saturate(1.1)",
+          // Scale up so the blur's soft edges don't show as black borders.
+          transform: "scale(1.08)",
           zIndex: 0,
         }}
       >
         <source src="/hero_video.mp4" type="video/mp4" />
       </video>
-      {/* ── Layer A: cutout headlines (multiply over the video) ──
-          The medium-gray bg dims the video everywhere; the text itself,
-          rendered white / soft-green inside this layer, multiplies back to
-          near-original video color so the text shape acts as a "window".
-          Tuned so the dim is noticeable but the surroundings aren't muddy. */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "#3a3a3a",
-          mixBlendMode: "multiply",
-          zIndex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 20px",
-          pointerEvents: "none",
-        }}
-      >
-        <Spacer height={50} />
-        <h1
-          ref={line1Ref}
-          data-text="ANY LANGUAGE,"
-          style={{
-            margin: 0,
-            fontWeight: 900,
-            lineHeight: 0.92,
-            letterSpacing: "-0.045em",
-            fontSize: "clamp(56px, 13vw, 200px)",
-            color: "white",
-            textAlign: "center",
-          }}
-        >
-          ANY LANGUAGE,
-        </h1>
-        <h1
-          ref={line2Ref}
-          data-text="ONE CALL."
-          style={{
-            margin: 0,
-            fontWeight: 900,
-            lineHeight: 0.92,
-            letterSpacing: "-0.045em",
-            fontSize: "clamp(56px, 13vw, 200px)",
-            // Soft green: multiplied with bright video gives a translucent
-            // green tint rather than a solid green block.
-            color: "#a8e0bb",
-            textAlign: "center",
-          }}
-        >
-          ONE CALL.
-        </h1>
-        <Spacer height={220} />
-      </div>
-
-      {/* ── Layer B: regular UI (no blend) ──
-          Mirrors the layout but with invisible spacers in the headline slots
-          so the badge / subtitle / CTAs land in the right vertical positions. */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 2,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 20px",
-          textAlign: "center",
-        }}
-      >
-        <div
-          ref={badgeRef}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "5px 13px",
-            background: "rgba(255,255,255,0.12)",
-            border: "1px solid rgba(255,255,255,0.25)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            color: "white",
-            borderRadius: 999,
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: 0.5,
-            textTransform: "uppercase",
-            marginBottom: 16,
-          }}
-        >
-          ⚡ Powered by OpenAI Realtime
-        </div>
-
-        {/* Invisible placeholders matching the headlines so the rest of the UI
-            lines up under the cutout text. */}
-        <h1
-          aria-hidden
-          style={{
-            margin: 0,
-            fontWeight: 900,
-            lineHeight: 0.92,
-            letterSpacing: "-0.045em",
-            fontSize: "clamp(56px, 13vw, 200px)",
-            visibility: "hidden",
-            pointerEvents: "none",
-          }}
-        >
-          ANY LANGUAGE,
-        </h1>
-        <h1
-          aria-hidden
-          style={{
-            margin: 0,
-            fontWeight: 900,
-            lineHeight: 0.92,
-            letterSpacing: "-0.045em",
-            fontSize: "clamp(56px, 13vw, 200px)",
-            visibility: "hidden",
-            pointerEvents: "none",
-          }}
-        >
-          ONE CALL.
-        </h1>
-
-        <p
-          ref={subRef}
-          style={{
-            margin: "30px auto 0",
-            maxWidth: 580,
-            fontSize: 17,
-            lineHeight: 1.55,
-            color: "rgba(255,255,255,0.9)",
-            textShadow: "0 1px 8px rgba(0,0,0,0.4)",
-          }}
-        >
-          전 세계 누구와도 모국어 그대로 대화하세요. 말하는 즉시 상대방 언어로 번역돼 자막으로
-          뜨고, 대화 기록은 자동 저장돼요.
-        </p>
-
-        <div
-          ref={ctaRef}
-          style={{
-            marginTop: 30,
-            display: "flex",
-            gap: 12,
-            justifyContent: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <a
-            href="#match"
-            style={{
-              padding: "14px 28px",
-              background: ACCENT,
-              color: "white",
-              border: `1px solid ${ACCENT}`,
-              borderRadius: 999,
-              fontSize: 15,
-              fontWeight: 700,
-              textDecoration: "none",
-              boxShadow: `0 6px 20px ${ACCENT}66`,
-            }}
-          >
-            지금 시작하기 →
-          </a>
-          <a
-            href="#how"
-            style={{
-              padding: "14px 24px",
-              background: "rgba(255,255,255,0.08)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              color: "white",
-              border: "1px solid rgba(255,255,255,0.3)",
-              borderRadius: 999,
-              fontSize: 15,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            사용법 보기
-          </a>
-        </div>
-      </div>
+      {/*
+        Both layers share IDENTICAL content; one shows just the headlines
+        (multiply blend → cutout effect), the other shows just the UI
+        (badge / subtitle / CTA, normal blend). visibility:hidden keeps the
+        hidden elements taking the same vertical space so the two stacks
+        align across every breakpoint.
+      */}
+      <HeroLayer kind="cutout">
+        <HeroContent
+          line1Ref={line1Ref}
+          line2Ref={line2Ref}
+          show="headlines"
+        />
+      </HeroLayer>
+      <HeroLayer kind="ui">
+        <HeroContent
+          badgeRef={badgeRef}
+          subRef={subRef}
+          ctaRef={ctaRef}
+          show="ui"
+        />
+      </HeroLayer>
 
       {/* Scroll indicator */}
       <div
@@ -523,6 +364,168 @@ function Hero() {
 
 function Spacer({ height }: { height: number }) {
   return <div aria-hidden style={{ height, flexShrink: 0 }} />;
+}
+
+// ─── Hero layer wrappers ─────────────────────────────────────────────
+// Two stacked absolute layers with identical content; one cuts through the
+// blurred video, the other carries the regular UI on top.
+
+const headlineFontStyle: React.CSSProperties = {
+  margin: 0,
+  fontWeight: 900,
+  lineHeight: 0.95,
+  letterSpacing: "-0.022em",
+  // Tighter clamp than before so it doesn't blow up on narrow screens.
+  fontSize: "clamp(44px, 11vw, 168px)",
+  textAlign: "center",
+};
+
+function HeroLayer({
+  kind,
+  children,
+}: {
+  kind: "cutout" | "ui";
+  children: React.ReactNode;
+}) {
+  const base: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 20px",
+    textAlign: "center",
+  };
+  if (kind === "cutout") {
+    return (
+      <div
+        aria-hidden
+        style={{
+          ...base,
+          background: "#555555", // lighter than before — less dim
+          mixBlendMode: "multiply",
+          zIndex: 1,
+          pointerEvents: "none",
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+  return <div style={{ ...base, zIndex: 2 }}>{children}</div>;
+}
+
+function HeroContent({
+  show,
+  line1Ref,
+  line2Ref,
+  badgeRef,
+  subRef,
+  ctaRef,
+}: {
+  show: "headlines" | "ui";
+  line1Ref?: React.RefObject<HTMLHeadingElement | null>;
+  line2Ref?: React.RefObject<HTMLHeadingElement | null>;
+  badgeRef?: React.RefObject<HTMLDivElement | null>;
+  subRef?: React.RefObject<HTMLParagraphElement | null>;
+  ctaRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const headlinesHidden = show !== "headlines";
+  const uiHidden = show !== "ui";
+
+  return (
+    <>
+      <h1
+        ref={line1Ref}
+        data-text="ANY LANGUAGE,"
+        style={{
+          ...headlineFontStyle,
+          color: "white",
+          visibility: headlinesHidden ? "hidden" : "visible",
+        }}
+      >
+        ANY LANGUAGE,
+      </h1>
+      <h1
+        ref={line2Ref}
+        data-text="TRANSLATED."
+        style={{
+          ...headlineFontStyle,
+          // Soft green: multiplied with bright video gives a translucent
+          // green tint rather than a solid green block.
+          color: "#a8e0bb",
+          visibility: headlinesHidden ? "hidden" : "visible",
+        }}
+      >
+        TRANSLATED.
+      </h1>
+
+      <p
+        ref={subRef}
+        style={{
+          margin: "28px auto 0",
+          maxWidth: 580,
+          fontSize: 16,
+          lineHeight: 1.55,
+          color: "rgba(255,255,255,0.92)",
+          textShadow: "0 1px 8px rgba(0,0,0,0.45)",
+          visibility: uiHidden ? "hidden" : "visible",
+          pointerEvents: uiHidden ? "none" : "auto",
+        }}
+      >
+        전 세계 누구와도 모국어 그대로 대화하세요. 말하는 즉시 상대방 언어로 번역돼 자막으로
+        뜨고, 대화 기록은 자동 저장돼요.
+      </p>
+
+      <div
+        ref={ctaRef}
+        style={{
+          marginTop: 28,
+          display: "flex",
+          gap: 12,
+          justifyContent: "center",
+          flexWrap: "wrap",
+          visibility: uiHidden ? "hidden" : "visible",
+          pointerEvents: uiHidden ? "none" : "auto",
+        }}
+      >
+        <a
+          href="#match"
+          style={{
+            padding: "14px 28px",
+            background: ACCENT,
+            color: "white",
+            border: `1px solid ${ACCENT}`,
+            borderRadius: 999,
+            fontSize: 15,
+            fontWeight: 700,
+            textDecoration: "none",
+            boxShadow: `0 6px 20px ${ACCENT}66`,
+          }}
+        >
+          지금 시작하기 →
+        </a>
+        <a
+          href="#how"
+          style={{
+            padding: "14px 24px",
+            background: "rgba(255,255,255,0.1)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            color: "white",
+            border: "1px solid rgba(255,255,255,0.35)",
+            borderRadius: 999,
+            fontSize: 15,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          사용법 보기
+        </a>
+      </div>
+    </>
+  );
 }
 
 // ─── Intro / Transition section ──────────────────────────────────────
@@ -719,8 +722,235 @@ function ChatBubble({
   );
 }
 
-// ─── Features ────────────────────────────────────────────────────────
-function Features() {
+// ─── Stats strip ─────────────────────────────────────────────────────
+function Stats() {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const ctx = gsap.context(() => {
+      const cells = ref.current!.querySelectorAll<HTMLDivElement>("[data-stat]");
+      gsap.from(cells, {
+        y: 24,
+        opacity: 0,
+        duration: 0.7,
+        ease: "power3.out",
+        stagger: 0.12,
+        scrollTrigger: { trigger: ref.current, start: "top 85%", once: true },
+      });
+    }, ref);
+    return () => ctx.revert();
+  }, []);
+
+  const cells = [
+    { value: "8+", label: "지원 언어", hint: "한 · 영 · 일 · 중 · 스 · 프 · 독 · 베 …" },
+    { value: "~200ms", label: "번역 지연", hint: "말하면 자막이 거의 동시에 흘러요" },
+    { value: "$0", label: "베타 기간 요금", hint: "유료 기능은 회의 녹화 / 분석 (예정)" },
+  ];
+
+  return (
+    <section
+      ref={ref}
+      style={{
+        padding: "60px 24px",
+        maxWidth: 1100,
+        margin: "0 auto",
+      }}
+    >
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 0,
+          border: `1px solid ${BORDER_SOFT}`,
+          borderRadius: 16,
+          overflow: "hidden",
+          background: SURFACE,
+        }}
+      >
+        {cells.map((c, i) => (
+          <div
+            key={c.label}
+            data-stat
+            style={{
+              padding: "28px 26px",
+              textAlign: "center",
+              borderLeft: i === 0 ? "none" : `1px solid ${BORDER_SOFT}`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: "clamp(28px, 4vw, 40px)",
+                fontWeight: 900,
+                color: ACCENT,
+                letterSpacing: -0.7,
+                lineHeight: 1,
+              }}
+            >
+              {c.value}
+            </div>
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 13.5,
+                fontWeight: 700,
+                color: TEXT,
+              }}
+            >
+              {c.label}
+            </div>
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 12,
+                color: TEXT_MUTED,
+                lineHeight: 1.5,
+              }}
+            >
+              {c.hint}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── Use Cases ───────────────────────────────────────────────────────
+function UseCases() {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const ctx = gsap.context(() => {
+      const cards = ref.current!.querySelectorAll<HTMLDivElement>("[data-uc]");
+      gsap.from(cards, {
+        y: 50,
+        opacity: 0,
+        duration: 0.8,
+        ease: "power3.out",
+        stagger: 0.14,
+        scrollTrigger: { trigger: ref.current, start: "top 80%", once: true },
+      });
+    }, ref);
+    return () => ctx.revert();
+  }, []);
+
+  const cases = [
+    {
+      emoji: "✈️",
+      tag: "여행 · 교류",
+      title: "외국 친구와 통화",
+      body: "잠깐 시간 맞는 친구한테 링크 보내서 모국어 그대로 수다. 영어 못해도 OK.",
+    },
+    {
+      emoji: "🗣️",
+      tag: "언어 학습",
+      title: "실전 회화 연습",
+      body: "원어민과 매칭. 내가 말한 문장이 어떻게 번역되는지 자막으로 즉시 피드백.",
+    },
+    {
+      emoji: "💼",
+      tag: "업무",
+      title: "다국적 미팅",
+      body: "방 만들기 → 링크 공유 → 모두 모국어로 발언. 대화 자동 기록은 회의록 초안.",
+    },
+  ];
+
+  return (
+    <section
+      id="how"
+      ref={ref}
+      style={{
+        background: SURFACE_WARM,
+        borderTop: `1px solid ${BORDER_SOFT}`,
+        borderBottom: `1px solid ${BORDER_SOFT}`,
+      }}
+    >
+      <div style={{ padding: "100px 24px", maxWidth: 1100, margin: "0 auto" }}>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "clamp(26px, 4vw, 40px)",
+            fontWeight: 900,
+            textAlign: "center",
+            letterSpacing: "-0.03em",
+            color: TEXT,
+          }}
+        >
+          이런 때 <span style={{ color: ACCENT }}>써보세요</span>
+        </h2>
+        <div
+          style={{
+            marginTop: 44,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 14,
+          }}
+        >
+          {cases.map((c) => (
+            <div
+              key={c.title}
+              data-uc
+              style={{
+                position: "relative",
+                padding: 26,
+                background: SURFACE,
+                border: `1px solid ${BORDER_SOFT}`,
+                borderRadius: 16,
+                transition: "transform 0.25s, box-shadow 0.25s, border-color 0.25s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-3px)";
+                e.currentTarget.style.boxShadow =
+                  "0 18px 36px rgba(15,23,42,0.08)";
+                e.currentTarget.style.borderColor = ACCENT;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.borderColor = BORDER_SOFT;
+              }}
+            >
+              <div style={{ fontSize: 34, marginBottom: 14 }}>{c.emoji}</div>
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "2px 9px",
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  letterSpacing: 0.6,
+                  textTransform: "uppercase",
+                  color: ACCENT_DEEP,
+                  background: ACCENT_SOFT,
+                  borderRadius: 999,
+                  marginBottom: 10,
+                }}
+              >
+                {c.tag}
+              </div>
+              <div
+                style={{
+                  fontSize: 17,
+                  fontWeight: 800,
+                  color: TEXT,
+                  marginBottom: 6,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {c.title}
+              </div>
+              <div style={{ fontSize: 13.5, color: TEXT_MUTED, lineHeight: 1.6 }}>
+                {c.body}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── (unused) ────────────────────────────────────────────────────────
+function _Unused1() {
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
@@ -834,7 +1064,7 @@ function Features() {
 }
 
 // ─── How It Works ────────────────────────────────────────────────────
-function HowItWorks() {
+function _Unused2_HowItWorks() {
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
@@ -1320,24 +1550,16 @@ function FAQ() {
 
   const items = [
     {
-      q: "번역 정확도는 어느 정도예요?",
-      a: "OpenAI Realtime API (gpt-realtime)와 gpt-4o-transcribe를 씁니다. 짧고 명확한 대화는 거의 완벽하고, 긴 문장도 의미 보존이 좋아요. 가끔 어긋난 번역은 채팅 버블의 ⋯ 메뉴에서 재번역할 수 있어요.",
-    },
-    {
-      q: "통화 내용이 저장되나요?",
-      a: "로그인 사용자는 Firestore에 자기 계정 하위 트리에만 저장돼요. 로그인 안 한 경우는 서버 측 SQLite (휘발성)에 임시 저장. 자기 자신만 볼 수 있고, /기록 페이지에서 다시 볼 수 있어요.",
+      q: "번역이 얼마나 정확해요?",
+      a: "OpenAI Realtime API + gpt-4o-transcribe 조합. 짧은 대화는 거의 완벽하고, 가끔 어긋난 번역은 채팅 버블의 ⋯ 메뉴에서 재번역할 수 있어요.",
     },
     {
       q: "데이터는 안전한가요?",
-      a: "P2P 음성/영상은 WebRTC로 직접 연결돼 서버를 거치지 않아요. 시그널링과 번역은 HTTPS/WSS 암호화. 대화 기록은 Firestore 보안 규칙으로 본인만 접근 가능.",
+      a: "음성/영상은 P2P (WebRTC)로 직접 흘러서 서버를 거치지 않아요. 대화 기록은 Firestore 보안 규칙으로 본인만 접근 가능.",
     },
     {
       q: "유료인가요?",
-      a: "지금은 베타라 무료. 추후 회의 녹화·회의록 분석 같은 고급 기능은 유료(Stripe)로 갈 예정. 기본 통화·번역은 계속 무료로 유지할 계획.",
-    },
-    {
-      q: "친구랑 직접 통화할 수 있나요?",
-      a: "지금은 \"방 만들기\"로 링크 만들어서 공유하는 방식. 친구 추가/직접 전화 걸기 기능은 다음 업데이트에 들어옵니다.",
+      a: "지금 베타라 무료. 회의 녹화·회의록 자동 분석 같은 추가 기능은 이후 유료로 들어와요. 기본 통화·번역은 계속 무료 유지 계획.",
     },
   ];
 
@@ -1431,7 +1653,7 @@ function FAQ() {
 }
 
 // ─── Final CTA ───────────────────────────────────────────────────────
-function FinalCTA() {
+function _Unused3_FinalCTA() {
   const sectionRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
