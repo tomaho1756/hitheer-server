@@ -6,7 +6,7 @@
     "dev": "next dev -p 3100",
     "dev:https": "next dev --experimental-https --experimental-https-key ./certificates/localhost-key.pem --experimental-https-cert ./certificates/localhost.pem -H 0.0.0.0 -p 3100",
     "build": "next build",
-    "start": "next start -p 3100",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
