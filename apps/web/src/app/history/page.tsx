@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { listConversations, type ConversationSummary } from "@/lib/conversations";
 import { useAuth } from "@/lib/auth-context";
+import { MobileHistory } from "@/components/mobile/history";
 
 const ACCENT = "#03C75A";
 const SURFACE = "#ffffff";
@@ -29,18 +30,23 @@ export default function HistoryPage() {
   }, [ready, user]);
 
   return (
-    <main
-      style={{
-        maxWidth: 680,
-        margin: "6vh auto",
-        padding: 28,
-        background: SURFACE,
-        borderRadius: 16,
-        border: `1px solid ${BORDER}`,
-        boxShadow: "0 4px 16px rgba(15,23,42,0.06)",
-      }}
-    >
-      <header
+    <>
+      <div className="app-mobile-only">
+        <MobileHistory />
+      </div>
+      <main
+        className="app-desktop-only"
+        style={{
+          maxWidth: 680,
+          margin: "6vh auto",
+          padding: 28,
+          background: SURFACE,
+          borderRadius: 16,
+          border: `1px solid ${BORDER}`,
+          boxShadow: "0 4px 16px rgba(15,23,42,0.06)",
+        }}
+      >
+        <header
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -155,8 +161,9 @@ export default function HistoryPage() {
             </Link>
           </li>
         ))}
-      </ul>
-    </main>
+        </ul>
+      </main>
+    </>
   );
 }
 

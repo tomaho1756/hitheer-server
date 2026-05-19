@@ -2,6 +2,47 @@
   box-sizing: border-box;
 }
 
+/* Section padding tokens — let inline styles read via var(...) so we get
+   real responsive sizing without re-rendering on resize. */
+:root {
+  --section-py: 110px;
+  --section-px: 24px;
+  --section-py-tight: 80px;
+}
+@media (max-width: 720px) {
+  :root {
+    --section-py: 64px;
+    --section-px: 18px;
+    --section-py-tight: 48px;
+  }
+}
+@media (max-width: 420px) {
+  :root {
+    --section-py: 52px;
+    --section-px: 14px;
+    --section-py-tight: 40px;
+  }
+}
+
+/* Mobile-vs-Desktop hard split. We render BOTH server-side and let CSS hide
+   one — avoids hydration flicker. */
+.app-mobile-only { display: none; }
+.app-desktop-only { display: block; }
+@media (max-width: 768px) {
+  .app-mobile-only { display: block; }
+  .app-desktop-only { display: none; }
+}
+
+/* iOS safe-area insets so the bottom tab bar clears the home indicator. */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .app-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .app-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
 html,
 body {
   margin: 0;

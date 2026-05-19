@@ -16,6 +16,7 @@ import { loadPrefs } from "@/lib/languages";
 import { getIdToken, useAuth } from "@/lib/auth-context";
 import { saveConversation as persistConversation } from "@/lib/conversations";
 import { Lobby, type LobbyResult } from "./lobby";
+import { useIsMobile } from "@/lib/use-is-mobile";
 
 type Status =
   | "idle"
@@ -65,11 +66,22 @@ export default function CallPage() {
   const conversationStartRef = useRef<number>(Date.now());
   const currentRoomIdRef = useRef<string>(initialRoomId);
 
-  const { user } = useAuth();
+  const { user, ready: authReady, configured: authConfigured } = useAuth();
   const userRef = useRef<typeof user>(user);
   useEffect(() => {
     userRef.current = user;
   }, [user]);
+
+  // Gate: video calls require sign-in (when Firebase is wired up).
+  useEffect(() => {
+    if (!authReady) return;
+    if (authConfigured && !user) {
+      const here = typeof window !== "undefined"
+        ? window.location.pathname + window.location.search
+        : "/";
+      router.replace(`/signin?next=${encodeURIComponent(here)}`);
+    }
+  }, [authReady, user, authConfigured, router]);
 
   const [phase, setPhase] = useState<"lobby" | "in-call">(
     fastJoin ? "in-call" : "lobby"
@@ -93,6 +105,10 @@ export default function CallPage() {
   const [viewMode, setViewMode] = useState<"pip" | "split">("pip");
   const [showConversation, setShowConversation] = useState(true);
   const videoAreaRef = useRef<HTMLDivElement>(null);
+
+  // Mobile in-call layout: stacked video + chat-as-modal.
+  const isMobile = useIsMobile(768);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Re-bind srcObject when the view mode flips — the <video> elements get
   // remounted across the conditional, so the previous srcObject gets lost.
@@ -665,6 +681,364 @@ export default function CallPage() {
     );
   }
 
+  // ─── Mobile in-call view ────────────────────────────────────────────
+  // Stacked vertical layout (peer on top, you below), chat slides up as a
+  // bottom-sheet modal, only essential controls in the dock.
+  if (isMobile) {
+    const isLooking = status === "looking-next" || status === "waiting-peer";
+    return (
+      <main
+        style={{
+          height: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          background: "#0a0a0a",
+          color: "white",
+          overflow: "hidden",
+        }}
+      >
+        {/* Top status bar */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "10px 14px",
+            background: "rgba(0,0,0,0.45)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            fontSize: 12,
+            color: "rgba(255,255,255,0.9)",
+            zIndex: 5,
+          }}
+        >
+          <span style={{ fontFamily: "ui-monospace, monospace", opacity: 0.7 }}>
+            {currentRoomId.slice(0, 8)}
+          </span>
+          {mySpeaks && partnerSpeaks && (
+            <span
+              style={{
+                background: "rgba(3,199,90,0.18)",
+                color: "#a8e0bb",
+                padding: "2px 8px",
+                borderRadius: 999,
+                fontWeight: 700,
+                letterSpacing: 0.3,
+              }}
+            >
+              {mySpeaks.toUpperCase()} → {partnerSpeaks.toUpperCase()}
+            </span>
+          )}
+          <span style={{ color: statusColor(status), fontWeight: 600 }}>
+            {statusLabel(status)}
+          </span>
+        </div>
+
+        {/* Video stack */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            padding: 6,
+            minHeight: 0,
+          }}
+        >
+          <div
+            style={{
+              flex: 1.4,
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 14,
+              background: "#0a0c10",
+              minHeight: 0,
+            }}
+          >
+            <FillingTile
+              label="peer"
+              videoRef={remoteVideo}
+              showPlaceholder={!remoteHasVideo}
+              placeholderText={
+                status === "connected" ? "audio only" : isLooking ? "" : "waiting…"
+              }
+            />
+            {isLooking && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "rgba(10,12,16,0.55)",
+                  backdropFilter: "blur(8px)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 12,
+                  zIndex: 4,
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    border: "3px solid rgba(255,255,255,0.25)",
+                    borderTopColor: "white",
+                    borderRadius: "50%",
+                    animation: "callspin 0.9s linear infinite",
+                  }}
+                />
+                <span style={{ fontSize: 12.5 }}>
+                  {status === "looking-next"
+                    ? "다음 상대 찾는 중…"
+                    : "상대 기다리는 중…"}
+                </span>
+                <style>{`@keyframes callspin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            )}
+            {latestPeerSubtitle && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 12,
+                  left: 12,
+                  right: 12,
+                  background: "rgba(10,12,16,0.78)",
+                  backdropFilter: "blur(8px)",
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  zIndex: 5,
+                  textAlign: "center",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <div
+                  style={{
+                    opacity: 0.6,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {latestPeerSubtitle.langOriginal} → {latestPeerSubtitle.langTranslated}
+                </div>
+                {latestPeerSubtitle.original && (
+                  <div style={{ marginTop: 3, opacity: 0.85, fontSize: 12 }}>
+                    {latestPeerSubtitle.original}
+                  </div>
+                )}
+                {latestPeerSubtitle.translated && (
+                  <div style={{ marginTop: 3, fontWeight: 600 }}>
+                    {latestPeerSubtitle.translated}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 14,
+              background: "#0a0c10",
+              minHeight: 0,
+            }}
+          >
+            <FillingTile
+              label="you"
+              videoRef={localVideo}
+              muted
+              showPlaceholder={!hasLocalVideo || !camOn}
+              placeholderText={!hasLocalVideo ? "no camera" : "camera off"}
+            />
+          </div>
+        </div>
+
+        {/* Floating chat FAB */}
+        <button
+          onClick={() => setChatOpen(true)}
+          aria-label="대화 보기"
+          style={{
+            position: "fixed",
+            bottom: 92,
+            right: 14,
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            background: "#03C75A",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 6px 18px rgba(3,199,90,0.55)",
+            zIndex: 30,
+            padding: 0,
+          }}
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          {subtitles.length > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: -3,
+                right: -3,
+                minWidth: 18,
+                height: 18,
+                padding: "0 5px",
+                borderRadius: 9,
+                background: "white",
+                color: "#03C75A",
+                fontSize: 10,
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "2px solid #03C75A",
+              }}
+            >
+              {subtitles.length > 99 ? "99+" : subtitles.length}
+            </span>
+          )}
+        </button>
+
+        {/* Bottom controls */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 18,
+            padding: "12px 14px calc(12px + env(safe-area-inset-bottom, 0px))",
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            zIndex: 10,
+          }}
+        >
+          <MobileCtrlBtn
+            on={micOn}
+            disabled={!hasLocalAudio}
+            onClick={toggleMic}
+            label={micOn ? "마이크 끔" : "마이크 켬"}
+            icon={micOn ? <Icon.Mic /> : <Icon.MicOff />}
+          />
+          <MobileCtrlBtn
+            on={camOn}
+            disabled={!hasLocalVideo}
+            onClick={toggleCam}
+            label={camOn ? "카메라 끔" : "카메라 켬"}
+            icon={camOn ? <Icon.Video /> : <Icon.VideoOff />}
+          />
+          <MobileCtrlBtn
+            on
+            danger
+            onClick={leave}
+            label="나가기"
+            icon={<Icon.PhoneOff />}
+          />
+        </div>
+
+        {/* Chat modal */}
+        {chatOpen && (
+          <div
+            onClick={() => setChatOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.55)",
+              zIndex: 40,
+              display: "flex",
+              alignItems: "flex-end",
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxHeight: "82dvh",
+                background: "#ffffff",
+                color: "#18191a",
+                borderTopLeftRadius: 18,
+                borderTopRightRadius: 18,
+                display: "flex",
+                flexDirection: "column",
+                animation: "sheetUp 0.25s ease-out",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "12px 16px 8px",
+                  borderBottom: "1px solid #e5e7eb",
+                }}
+              >
+                <div style={{ width: 40, height: 4, background: "#e5e7eb", borderRadius: 2, margin: "0 auto" }} />
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "6px 16px 10px",
+                }}
+              >
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>대화</h3>
+                <button
+                  onClick={() => setChatOpen(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    fontSize: 22,
+                    color: "#65676b",
+                    cursor: "pointer",
+                    padding: 4,
+                  }}
+                  aria-label="닫기"
+                >
+                  ✕
+                </button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "8px 14px 16px" }}>
+                {subtitles.length === 0 ? (
+                  <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", padding: "40px 0" }}>
+                    말하면 여기에 대화가 쌓여요
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {subtitles.map((l) => (
+                      <ChatBubble key={l.id} line={l} onRetranslate={retranslate} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <style>{`@keyframes sheetUp { from { transform: translateY(20%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
+          </div>
+        )}
+      </main>
+    );
+  }
+
   return (
     <main
       style={{
@@ -1171,6 +1545,55 @@ function SubtitleOverlay({ line }: { line: SubtitleLine }) {
         <div style={{ marginTop: 3, fontWeight: 600 }}>{line.translated}</div>
       )}
     </div>
+  );
+}
+
+function MobileCtrlBtn({
+  on,
+  disabled,
+  danger,
+  onClick,
+  icon,
+  label,
+}: {
+  on: boolean;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  const bg = disabled
+    ? "rgba(255,255,255,0.08)"
+    : danger
+    ? "#f02849"
+    : on
+    ? "rgba(255,255,255,0.14)"
+    : "#f02849";
+  const color = disabled ? "rgba(255,255,255,0.4)" : "white";
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      style={{
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        background: bg,
+        color,
+        border: "1px solid rgba(255,255,255,0.18)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+        boxShadow:
+          danger || !on ? "0 4px 14px rgba(240,40,73,0.45)" : "0 2px 8px rgba(0,0,0,0.25)",
+      }}
+    >
+      {icon}
+    </button>
   );
 }
 

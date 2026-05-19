@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { SignalingClient, signalingUrl } from "@/lib/signaling";
 import { loadPrefs } from "@/lib/languages";
-import { getIdToken } from "@/lib/auth-context";
+import { getIdToken, useAuth } from "@/lib/auth-context";
 
 type Status = "connecting" | "queued" | "matched" | "failed" | "no-prefs";
 
@@ -13,6 +13,7 @@ const EXPAND_AFTER_SECS = 60;
 
 export default function MatchPage() {
   const router = useRouter();
+  const { user, ready, configured } = useAuth();
   const signalingRef = useRef<SignalingClient | null>(null);
   const allowAnyRef = useRef(false);
   const [status, setStatus] = useState<Status>("connecting");
@@ -20,7 +21,16 @@ export default function MatchPage() {
   const [askExpand, setAskExpand] = useState(false);
   const [allowAny, setAllowAny] = useState(false);
 
+  // Gate: only signed-in users can initiate matching.
   useEffect(() => {
+    if (!ready) return;
+    if (configured && !user) {
+      router.replace(`/signin?next=${encodeURIComponent("/match")}`);
+    }
+  }, [ready, user, configured, router]);
+
+  useEffect(() => {
+    if (!ready || (configured && !user)) return;
     const prefs = loadPrefs();
     if (prefs.speaks.length === 0 || prefs.wants.length === 0) {
       setStatus("no-prefs");
@@ -81,7 +91,7 @@ export default function MatchPage() {
       if (s?.isOpen) s.send({ type: "cancel-match" });
       s?.close();
     };
-  }, [router]);
+  }, [router, ready, user, configured]);
 
   const expand = () => {
     const prefs = loadPrefs();

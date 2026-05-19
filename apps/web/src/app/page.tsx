@@ -8,6 +8,9 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { LANGUAGES, loadPrefs, savePrefs } from "@/lib/languages";
 import { AccountPill } from "@/lib/account-pill";
+import { useAuth } from "@/lib/auth-context";
+import { useIsMobile, useIsNarrow } from "@/lib/use-is-mobile";
+import { MobileHome } from "@/components/mobile/home";
 
 // ─── theme ───────────────────────────────────────────────────────────
 const ACCENT = "#03C75A";
@@ -34,22 +37,28 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 
 export default function HomePage() {
   return (
-    <div style={{ background: PAGE_BG, overflowX: "hidden" }}>
-      <NavBar />
-      <Hero />
-      <Intro />
-      <Stats />
-      <UseCases />
-      <MatchSection />
-      <FAQ />
-      <Footer />
-    </div>
+    <>
+      <div className="app-desktop-only" style={{ background: PAGE_BG, overflowX: "hidden" }}>
+        <NavBar />
+        <Hero />
+        <Intro />
+        <Stats />
+        <UseCases />
+        <MatchSection />
+        <FAQ />
+        <Footer />
+      </div>
+      <div className="app-mobile-only">
+        <MobileHome />
+      </div>
+    </>
   );
 }
 
 // ─── NavBar ──────────────────────────────────────────────────────────
 function NavBar() {
   const [scrolled, setScrolled] = useState(false);
+  const isMobile = useIsMobile();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
     onScroll();
@@ -116,16 +125,17 @@ function NavBar() {
           <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3 }}>hithere</span>
         </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <NavLink href="#features" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
-            기능
-          </NavLink>
-          <NavLink href="#how" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
-            사용법
-          </NavLink>
-          <NavLink href="/history" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
-            기록
-          </NavLink>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 18 }}>
+          {!isMobile && (
+            <>
+              <NavLink href="#how" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
+                사용법
+              </NavLink>
+              <NavLink href="/history" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
+                기록
+              </NavLink>
+            </>
+          )}
           <AccountPill returnTo="/" />
         </div>
       </div>
@@ -574,7 +584,7 @@ function Intro() {
         position: "relative",
         background:
           "linear-gradient(180deg, #ffffff 0%, #f8f9fa 60%, #f0f2f5 100%)",
-        padding: "120px 24px 100px",
+        padding: "var(--section-py) var(--section-px) calc(var(--section-py) * 0.85)",
         overflow: "hidden",
       }}
     >
@@ -753,7 +763,7 @@ function Stats() {
     <section
       ref={ref}
       style={{
-        padding: "60px 24px",
+        padding: "var(--section-py-tight) var(--section-px)",
         maxWidth: 1100,
         margin: "0 auto",
       }}
@@ -867,7 +877,7 @@ function UseCases() {
         borderBottom: `1px solid ${BORDER_SOFT}`,
       }}
     >
-      <div style={{ padding: "100px 24px", maxWidth: 1100, margin: "0 auto" }}>
+      <div style={{ padding: "var(--section-py) var(--section-px)", maxWidth: 1100, margin: "0 auto" }}>
         <h2
           style={{
             margin: 0,
@@ -1007,7 +1017,7 @@ function _Unused1() {
     <section
       id="features"
       ref={sectionRef}
-      style={{ padding: "120px 24px", maxWidth: 1200, margin: "0 auto" }}
+      style={{ padding: "var(--section-py) var(--section-px)", maxWidth: 1200, margin: "0 auto" }}
     >
       <h2
         ref={titleRef}
@@ -1136,7 +1146,7 @@ function _Unused2_HowItWorks() {
         borderBottom: `1px solid ${BORDER_SOFT}`,
       }}
     >
-      <div style={{ padding: "120px 24px", maxWidth: 880, margin: "0 auto" }}>
+      <div style={{ padding: "var(--section-py) var(--section-px)", maxWidth: 880, margin: "0 auto" }}>
         <h2
           ref={titleRef}
           style={{
@@ -1235,6 +1245,8 @@ function _Unused2_HowItWorks() {
 // ─── Match Section (existing language pickers + CTAs) ────────────────
 function MatchSection() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isNarrow = useIsNarrow();
   const sectionRef = useRef<HTMLElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [speaks, setSpeaks] = useState<string[]>([]);
@@ -1271,6 +1283,10 @@ function MatchSection() {
 
   const startRandomMatch = () => {
     savePrefs({ speaks, wants });
+    if (!user) {
+      router.push(`/signin?next=${encodeURIComponent("/match")}`);
+      return;
+    }
     router.push("/match");
   };
 
@@ -1282,14 +1298,19 @@ function MatchSection() {
         : `r-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const mine = speaks[0] ?? "ko";
     const peer = wants[0] ?? "en";
-    router.push(`/call/${roomId}?mine=${mine}&peer=${peer}&host=1`);
+    const dest = `/call/${roomId}?mine=${mine}&peer=${peer}&host=1`;
+    if (!user) {
+      router.push(`/signin?next=${encodeURIComponent(dest)}`);
+      return;
+    }
+    router.push(dest);
   };
 
   return (
     <section
       id="match"
       ref={sectionRef}
-      style={{ padding: "120px 24px", background: PAGE_BG }}
+      style={{ padding: "var(--section-py) var(--section-px)", background: PAGE_BG }}
     >
       <div
         ref={cardRef}
@@ -1357,7 +1378,7 @@ function MatchSection() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr",
             gap: 10,
             marginTop: 28,
           }}
@@ -1569,7 +1590,7 @@ function FAQ() {
     <section
       id="faq"
       ref={sectionRef}
-      style={{ padding: "120px 24px", maxWidth: 820, margin: "0 auto" }}
+      style={{ padding: "var(--section-py) var(--section-px)", maxWidth: 820, margin: "0 auto" }}
     >
       <h2
         ref={titleRef}
@@ -1680,7 +1701,7 @@ function _Unused3_FinalCTA() {
       style={{
         background: DARK_BG,
         color: "white",
-        padding: "120px 24px",
+        padding: "var(--section-py) var(--section-px)",
         textAlign: "center",
       }}
     >
