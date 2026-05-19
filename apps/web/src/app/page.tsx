@@ -237,13 +237,15 @@ function Hero() {
       tl.to(ctaRef.current, { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" }, "-=0.4");
       tl.to(indicatorRef.current, { opacity: 1, duration: 0.6 }, "-=0.2");
 
-      // Parallax fade-out as the section scrolls past.
+      // Parallax — translate only, no opacity fade. Including opacity here
+      // was racing the entrance tween + the scrub, which sometimes left the
+      // CTA at opacity:0 once the trigger captured its start value. Now
+      // CTAs stay solid until they naturally scroll off-screen.
       if (sectionRef.current) {
         gsap.to(
-          [line1Ref.current, line2Ref.current, subRef.current, ctaRef.current, badgeRef.current],
+          [line1Ref.current, line2Ref.current, badgeRef.current],
           {
             y: -120,
-            opacity: 0,
             ease: "none",
             scrollTrigger: {
               trigger: sectionRef.current,
