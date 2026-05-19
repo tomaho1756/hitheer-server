@@ -71,26 +71,30 @@ export interface LocalMediaResult {
   note?: string; // for UI when something fell back / failed
 }
 
-/// Try video+audio → audio-only → fail. Whatever succeeds is added to `pc`.
-export async function attachLocalMedia(pc: RTCPeerConnection): Promise<LocalMediaResult> {
-  const tryGet = async (constraints: MediaStreamConstraints) => {
-    return await navigator.mediaDevices.getUserMedia(constraints);
-  };
-
-  let stream: MediaStream | null = null;
-  let note: string | undefined;
-
+/// Acquire mic + cam only (no PC). Used by the lobby to preview the user's
+/// setup before the actual call starts. Try video+audio → audio-only → fail.
+export async function acquireLocalMedia(opts: {
+  audioDeviceId?: string;
+  videoDeviceId?: string;
+} = {}): Promise<LocalMediaResult> {
   const audioConstraints: MediaTrackConstraints = {
     noiseSuppression: true,
     echoCancellation: true,
     autoGainControl: true,
+    ...(opts.audioDeviceId ? { deviceId: { exact: opts.audioDeviceId } } : {}),
+  };
+  const videoConstraints: MediaTrackConstraints = {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    ...(opts.videoDeviceId ? { deviceId: { exact: opts.videoDeviceId } } : {}),
   };
 
+  const tryGet = (c: MediaStreamConstraints) => navigator.mediaDevices.getUserMedia(c);
+
+  let stream: MediaStream;
+  let note: string | undefined;
   try {
-    stream = await tryGet({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: audioConstraints,
-    });
+    stream = await tryGet({ video: videoConstraints, audio: audioConstraints });
   } catch (e) {
     const err = e as DOMException;
     note = `camera unavailable (${err.name}); trying audio only`;
@@ -103,16 +107,26 @@ export async function attachLocalMedia(pc: RTCPeerConnection): Promise<LocalMedi
       throw new Error(`microphone unavailable: ${err2.name}`);
     }
   }
-
-  for (const track of stream.getTracks()) {
-    pc.addTrack(track, stream);
-  }
   return {
     stream,
     hasVideo: stream.getVideoTracks().length > 0,
     hasAudio: stream.getAudioTracks().length > 0,
     note,
   };
+}
+
+/// Add existing local tracks to a peer connection.
+export function attachStreamToPc(pc: RTCPeerConnection, stream: MediaStream): void {
+  for (const track of stream.getTracks()) {
+    pc.addTrack(track, stream);
+  }
+}
+
+/// Combined: acquire + attach. Kept for compat with the older call flow.
+export async function attachLocalMedia(pc: RTCPeerConnection): Promise<LocalMediaResult> {
+  const result = await acquireLocalMedia();
+  attachStreamToPc(pc, result.stream);
+  return result;
 }
 
 export function setTrackEnabled(stream: MediaStream | null, kind: "audio" | "video", enabled: boolean) {

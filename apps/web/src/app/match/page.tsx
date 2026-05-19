@@ -51,6 +51,9 @@ export default function MatchPage() {
             const q = new URLSearchParams({
               mine: msg.mySpeaks,
               peer: msg.partnerSpeaks,
+              // Random match: peer is already in the room waiting, so skip the
+              // lobby and dive straight in.
+              fastjoin: "1",
             });
             router.push(`/call/${encodeURIComponent(msg.roomId)}?${q.toString()}`);
             break;

@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { SignalingClient, signalingUrl } from "@/lib/signaling";
 import {
   attachLocalMedia,
+  attachStreamToPc,
   createPeerConnection,
   fetchIceServers,
   setTrackEnabled,
@@ -14,6 +15,7 @@ import { startRealtime, type RealtimeHandle, type RealtimeSubtitleEvent } from "
 import { loadPrefs } from "@/lib/languages";
 import { getIdToken, useAuth } from "@/lib/auth-context";
 import { saveConversation as persistConversation } from "@/lib/conversations";
+import { Lobby, type LobbyResult } from "./lobby";
 
 type Status =
   | "idle"
@@ -45,6 +47,7 @@ export default function CallPage() {
   const mySpeaks = search.get("mine") ?? "";
   const partnerSpeaks = search.get("peer") ?? "";
   const isHost = search.get("host") === "1";
+  const fastJoin = search.get("fastjoin") === "1";
 
   const localVideo = useRef<HTMLVideoElement>(null);
   const remoteVideo = useRef<HTMLVideoElement>(null);
@@ -68,6 +71,9 @@ export default function CallPage() {
     userRef.current = user;
   }, [user]);
 
+  const [phase, setPhase] = useState<"lobby" | "in-call">(
+    fastJoin ? "in-call" : "lobby"
+  );
   const [currentRoomId, setCurrentRoomId] = useState(initialRoomId);
   const [status, setStatus] = useState<Status>("idle");
   const [iceState, setIceState] = useState<string>("new");
@@ -154,6 +160,7 @@ export default function CallPage() {
   };
 
   useEffect(() => {
+    if (phase !== "in-call") return;
     let cancelled = false;
 
     const wireRemoteStream = (stream: MediaStream) => {
@@ -422,18 +429,30 @@ export default function CallPage() {
       pcRef.current = pc;
 
       try {
-        const result = await attachLocalMedia(pc);
-        if (cancelled) return;
-        localStreamRef.current = result.stream;
-        setHasLocalVideo(result.hasVideo);
-        setHasLocalAudio(result.hasAudio);
-        setCamOn(result.hasVideo);
-        setMicOn(result.hasAudio);
-        if (result.note) {
-          setMediaNote(result.note);
-          appendLog(result.note);
+        // If the lobby already acquired a stream, reuse it. Otherwise (random
+        // match fastjoin path), acquire here.
+        if (localStreamRef.current) {
+          const s = localStreamRef.current;
+          attachStreamToPc(pc, s);
+          setHasLocalVideo(s.getVideoTracks().length > 0);
+          setHasLocalAudio(s.getAudioTracks().length > 0);
+          setCamOn(s.getVideoTracks().some((t) => t.enabled));
+          setMicOn(s.getAudioTracks().some((t) => t.enabled));
+          if (localVideo.current) localVideo.current.srcObject = s;
+        } else {
+          const result = await attachLocalMedia(pc);
+          if (cancelled) return;
+          localStreamRef.current = result.stream;
+          setHasLocalVideo(result.hasVideo);
+          setHasLocalAudio(result.hasAudio);
+          setCamOn(result.hasVideo);
+          setMicOn(result.hasAudio);
+          if (result.note) {
+            setMediaNote(result.note);
+            appendLog(result.note);
+          }
+          if (localVideo.current) localVideo.current.srcObject = result.stream;
         }
-        if (localVideo.current) localVideo.current.srcObject = result.stream;
       } catch (e) {
         appendLog(`media error: ${(e as Error).message}`);
         setStatus("failed");
@@ -505,7 +524,7 @@ export default function CallPage() {
       pcRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mySpeaks, partnerSpeaks]);
+  }, [mySpeaks, partnerSpeaks, phase]);
 
 
   const toggleMic = () => {
@@ -626,6 +645,25 @@ export default function CallPage() {
       appendLog(`retranslate failed: ${(e as Error).message}`);
     }
   };
+
+  if (phase === "lobby") {
+    return (
+      <Lobby
+        mySpeaks={mySpeaks}
+        partnerSpeaks={partnerSpeaks}
+        roomId={currentRoomId}
+        isHost={isHost}
+        onJoin={(r: LobbyResult) => {
+          localStreamRef.current = r.stream;
+          setHasLocalVideo(r.stream.getVideoTracks().length > 0);
+          setHasLocalAudio(r.stream.getAudioTracks().length > 0);
+          setCamOn(r.camOn);
+          setMicOn(r.micOn);
+          setPhase("in-call");
+        }}
+      />
+    );
+  }
 
   return (
     <main
