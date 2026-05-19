@@ -10,3 +10,8 @@ target
 .turbo
 .pnpm-store
 *.tsbuildinfo
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+apps/web/certificates/

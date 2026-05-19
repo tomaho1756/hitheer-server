@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { SignalingClient, signalingUrl } from "@/lib/signaling";
 import { loadPrefs } from "@/lib/languages";
+import { getIdToken } from "@/lib/auth-context";
 
 type Status = "connecting" | "queued" | "matched" | "failed" | "no-prefs";
 
@@ -34,33 +35,41 @@ export default function MatchPage() {
     }, 500);
 
     let cancelled = false;
-    const signaling = new SignalingClient(signalingUrl(), (msg) => {
-      if (cancelled) return;
-      switch (msg.type) {
-        case "queued":
-          setStatus("queued");
-          break;
-        case "match-found":
-          setStatus("matched");
-          signaling.close();
-          router.push(`/call/${encodeURIComponent(msg.roomId)}`);
-          break;
-        case "error":
-          setStatus("failed");
-          break;
-      }
-    });
-    signalingRef.current = signaling;
 
-    signaling
-      .connect()
-      .then(() => {
+    void (async () => {
+      const idToken = await getIdToken().catch(() => null);
+      if (cancelled) return;
+      const signaling = new SignalingClient(signalingUrl(idToken), (msg) => {
+        if (cancelled) return;
+        switch (msg.type) {
+          case "queued":
+            setStatus("queued");
+            break;
+          case "match-found": {
+            setStatus("matched");
+            signaling.close();
+            const q = new URLSearchParams({
+              mine: msg.mySpeaks,
+              peer: msg.partnerSpeaks,
+            });
+            router.push(`/call/${encodeURIComponent(msg.roomId)}?${q.toString()}`);
+            break;
+          }
+          case "error":
+            setStatus("failed");
+            break;
+        }
+      });
+      signalingRef.current = signaling;
+
+      try {
+        await signaling.connect();
         if (cancelled) return;
         signaling.send({ type: "find-match", ...prefs, allowAny: false });
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setStatus("failed");
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -84,21 +93,43 @@ export default function MatchPage() {
     setAskExpand(false);
   };
 
+  const ACCENT = "#03C75A";
+  const SURFACE = "#ffffff";
+  const SURFACE_ALT = "#f1f3f5";
+  const BORDER = "#e5e7eb";
+  const TEXT = "#18191a";
+  const TEXT_MUTED = "#65676b";
+
   if (status === "no-prefs") {
     return (
-      <main style={{ maxWidth: 480, margin: "20vh auto", padding: 24, textAlign: "center" }}>
-        <h1>missing language preferences</h1>
-        <p style={{ color: "#9aa3af" }}>Pick languages on the home page first.</p>
+      <main
+        style={{
+          maxWidth: 440,
+          margin: "20vh auto",
+          padding: 28,
+          textAlign: "center",
+          background: SURFACE,
+          borderRadius: 16,
+          border: `1px solid ${BORDER}`,
+          boxShadow: "0 4px 16px rgba(15,23,42,0.06)",
+        }}
+      >
+        <h1 style={{ fontSize: 20, marginTop: 0, color: TEXT }}>missing language preferences</h1>
+        <p style={{ color: TEXT_MUTED, fontSize: 13.5 }}>
+          Pick languages on the home page first.
+        </p>
         <button
           onClick={() => router.push("/")}
           style={{
-            marginTop: 24,
-            padding: "10px 18px",
-            background: "#3b82f6",
+            marginTop: 16,
+            padding: "10px 22px",
+            background: ACCENT,
             color: "white",
             border: "none",
-            borderRadius: 6,
+            borderRadius: 10,
             cursor: "pointer",
+            fontWeight: 600,
+            boxShadow: `0 4px 10px ${ACCENT}40`,
           }}
         >
           Go home
@@ -108,33 +139,51 @@ export default function MatchPage() {
   }
 
   return (
-    <main style={{ maxWidth: 480, margin: "20vh auto", padding: 24, textAlign: "center" }}>
-      <h1 style={{ marginBottom: 12 }}>{label(status)}</h1>
-      <p style={{ color: "#9aa3af" }}>{sub(status, elapsed, allowAny)}</p>
+    <main
+      style={{
+        maxWidth: 440,
+        margin: "20vh auto",
+        padding: 32,
+        textAlign: "center",
+        background: SURFACE,
+        borderRadius: 16,
+        border: `1px solid ${BORDER}`,
+        boxShadow: "0 4px 16px rgba(15,23,42,0.06)",
+      }}
+    >
+      <Spinner accent={ACCENT} />
+      <h1 style={{ marginTop: 16, marginBottom: 6, fontSize: 20, color: TEXT, fontWeight: 700 }}>
+        {label(status)}
+      </h1>
+      <p style={{ color: TEXT_MUTED, fontSize: 13.5, margin: 0 }}>
+        {sub(status, elapsed, allowAny)}
+      </p>
 
       {askExpand && (
         <div
           style={{
-            marginTop: 24,
+            marginTop: 22,
             padding: 16,
-            background: "#11141a",
-            border: "1px solid #2a2f37",
-            borderRadius: 8,
+            background: SURFACE_ALT,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
           }}
         >
-          <p style={{ margin: "0 0 12px" }}>
+          <p style={{ margin: "0 0 12px", color: TEXT, fontSize: 13.5 }}>
             No one matched in {EXPAND_AFTER_SECS}s. Open up to anyone?
           </p>
           <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
             <button
               onClick={expand}
               style={{
-                padding: "8px 14px",
-                background: "#3b82f6",
+                padding: "8px 16px",
+                background: ACCENT,
                 color: "white",
                 border: "none",
-                borderRadius: 6,
+                borderRadius: 8,
                 cursor: "pointer",
+                fontWeight: 600,
+                fontSize: 13,
               }}
             >
               Yes, expand
@@ -142,12 +191,13 @@ export default function MatchPage() {
             <button
               onClick={keepWaiting}
               style={{
-                padding: "8px 14px",
-                background: "transparent",
-                color: "#9aa3af",
-                border: "1px solid #2a2f37",
-                borderRadius: 6,
+                padding: "8px 16px",
+                background: SURFACE,
+                color: TEXT,
+                border: `1px solid ${BORDER}`,
+                borderRadius: 8,
                 cursor: "pointer",
+                fontSize: 13,
               }}
             >
               Keep waiting
@@ -159,18 +209,37 @@ export default function MatchPage() {
       <button
         onClick={() => router.push("/")}
         style={{
-          marginTop: 32,
+          marginTop: 28,
           padding: "10px 18px",
           background: "transparent",
-          color: "#9aa3af",
-          border: "1px solid #2a2f37",
-          borderRadius: 6,
+          color: TEXT_MUTED,
+          border: `1px solid ${BORDER}`,
+          borderRadius: 8,
           cursor: "pointer",
+          fontSize: 13,
         }}
       >
         Cancel
       </button>
     </main>
+  );
+}
+
+function Spinner({ accent }: { accent: string }) {
+  return (
+    <div
+      style={{
+        width: 48,
+        height: 48,
+        margin: "0 auto",
+        border: `3px solid ${accent}33`,
+        borderTopColor: accent,
+        borderRadius: "50%",
+        animation: "hitherespin 0.9s linear infinite",
+      }}
+    >
+      <style>{`@keyframes hitherespin { to { transform: rotate(360deg); } }`}</style>
+    </div>
   );
 }
 

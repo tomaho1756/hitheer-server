@@ -15,6 +15,18 @@ pub enum ClientToServer {
     Offer { sdp: String },
     Answer { sdp: String },
     IceCandidate { candidate: IceCandidatePayload },
+    Subtitle {
+        id: String,
+        original: String,
+        translated: String,
+        #[serde(rename = "langOriginal")]
+        lang_original: String,
+        #[serde(rename = "langTranslated")]
+        lang_translated: String,
+        ts: i64,
+        #[serde(rename = "final")]
+        is_final: bool,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -26,6 +38,12 @@ pub enum ServerToClient {
         room_id: String,
         #[serde(rename = "shouldOffer")]
         should_offer: bool,
+        /// First language the user speaks (= what they'll talk in).
+        #[serde(rename = "mySpeaks")]
+        my_speaks: String,
+        /// First language the partner speaks (= translation target).
+        #[serde(rename = "partnerSpeaks")]
+        partner_speaks: String,
     },
     Joined {
         #[serde(rename = "roomId")]
@@ -40,6 +58,18 @@ pub enum ServerToClient {
     Offer { sdp: String },
     Answer { sdp: String },
     IceCandidate { candidate: IceCandidatePayload },
+    Subtitle {
+        id: String,
+        original: String,
+        translated: String,
+        #[serde(rename = "langOriginal")]
+        lang_original: String,
+        #[serde(rename = "langTranslated")]
+        lang_translated: String,
+        ts: i64,
+        #[serde(rename = "final")]
+        is_final: bool,
+    },
     Error { message: String },
 }
 

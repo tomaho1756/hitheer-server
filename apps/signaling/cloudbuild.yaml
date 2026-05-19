@@ -1,0 +1,57 @@
+# Cloud Build pipeline:
+#   gcloud builds submit --config apps/signaling/cloudbuild.yaml \
+#     --substitutions=_REGION=asia-northeast3,_SERVICE=hithere-signaling .
+#
+# Deploys to Cloud Run with WebSocket-compatible settings:
+#   - --use-http2 NOT set (WebSocket upgrades work over HTTP/1.1)
+#   - --timeout=3600 (1h) so long-lived calls don't get killed
+#   - --concurrency=80 (default; bump higher if you want more peers per instance)
+#   - --min-instances=0 keeps cost at $0 when idle
+
+substitutions:
+  _REGION: asia-northeast3
+  _SERVICE: hithere-signaling
+  _REDIS_URL: ""
+  _OPENAI_API_KEY: ""
+  _FIREBASE_PROJECT_ID: hitheer-app
+  _TURN_STATIC_AUTH_SECRET: ""
+  _TURN_URIS: ""
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - apps/signaling/Dockerfile
+      - -t
+      - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/${_SERVICE}:$SHORT_SHA
+      - -t
+      - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/${_SERVICE}:latest
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/${_SERVICE}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/${_SERVICE}:$SHORT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8787
+      - --timeout=3600
+      - --cpu=1
+      - --memory=512Mi
+      - --min-instances=0
+      - --max-instances=10
+      - --set-env-vars=FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID},REDIS_URL=${_REDIS_URL},OPENAI_API_KEY=${_OPENAI_API_KEY},TURN_STATIC_AUTH_SECRET=${_TURN_STATIC_AUTH_SECRET},TURN_URIS=${_TURN_URIS}
+
+images:
+  - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/${_SERVICE}

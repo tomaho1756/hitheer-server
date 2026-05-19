@@ -62,11 +62,12 @@ export class SignalingClient {
   }
 }
 
-export function signalingUrl(): string {
+export function signalingUrl(token?: string | null): string {
   if (typeof window === "undefined") return "";
   const env = process.env.NEXT_PUBLIC_SIGNALING_URL;
-  if (env) return env;
-  // Default: same host as the page, port 8787.
-  const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${proto}://${window.location.hostname}:8787/ws`;
+  const base = env
+    ? env
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
+  if (!token) return base;
+  return base + (base.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(token);
 }

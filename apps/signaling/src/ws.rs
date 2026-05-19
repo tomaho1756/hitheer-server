@@ -1,22 +1,54 @@
 use axum::extract::ws::{Message, WebSocket};
-use axum::extract::{State, WebSocketUpgrade};
+use axum::extract::{Query, State, WebSocketUpgrade};
 use axum::response::Response;
 use futures_util::{SinkExt, StreamExt};
+use serde::Deserialize;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
+use crate::auth::VerifiedUser;
 use crate::matching::MatchRequest;
 use crate::protocol::{ClientToServer, ServerToClient};
 use crate::rooms::Rooms;
 use crate::AppState;
 
-pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
-    ws.on_upgrade(move |socket| handle_socket(socket, state))
+#[derive(Debug, Deserialize)]
+pub struct WsQuery {
+    /// Firebase ID token. Optional — anonymous peers are allowed when the
+    /// signaling server has `FIREBASE_PROJECT_ID` unset.
+    pub token: Option<String>,
 }
 
-async fn handle_socket(socket: WebSocket, state: AppState) {
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Query(q): Query<WsQuery>,
+    State(state): State<AppState>,
+) -> Response {
+    // Try to authenticate before the upgrade so we can attach the identity to
+    // this connection. Failures are non-fatal unless auth is enabled AND a
+    // token was provided that turned out to be bad — in that case we still
+    // allow the connection but tag it as anonymous + log a warning. Stricter
+    // policies can be layered on later (e.g. require auth for /conversations).
+    let user = match (state.auth.enabled(), q.token.as_deref()) {
+        (true, Some(tok)) => match state.auth.verify(tok).await {
+            Ok(u) => {
+                info!(uid = %u.uid, "authenticated peer");
+                Some(u)
+            }
+            Err(e) => {
+                warn!(error = %e, "token verify failed; treating as anonymous");
+                None
+            }
+        },
+        _ => None,
+    };
+    ws.on_upgrade(move |socket| handle_socket(socket, state, user))
+}
+
+async fn handle_socket(socket: WebSocket, state: AppState, user: Option<VerifiedUser>) {
     let peer_id = Uuid::new_v4();
+    let _user = user; // reserved for future per-peer features (friends, profile, etc.)
     let (mut sink, mut stream) = socket.split();
     let (tx, mut rx) = mpsc::unbounded_channel::<ServerToClient>();
     state.peers.register(peer_id, tx.clone());
@@ -60,24 +92,36 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                             });
                             continue;
                         }
+                        // Remember prefs before matching so the partner can read them.
+                        state.peers.set_prefs(peer_id, req.clone());
                         match state.matcher.enqueue_or_match(peer_id, &req).await {
                             Ok(Some(matched)) => {
                                 let other_tx = state.peers.get(matched.other_peer);
-                                if let Some(other_tx) = other_tx {
-                                    let _ = other_tx.send(ServerToClient::MatchFound {
-                                        room_id: matched.room_id.clone(),
-                                        should_offer: true,
-                                    });
-                                    let _ = tx.send(ServerToClient::MatchFound {
-                                        room_id: matched.room_id,
-                                        should_offer: false,
-                                    });
-                                } else {
-                                    // Partner disconnected between SPOP and dispatch.
-                                    warn!(?matched, "matched peer no longer connected, requeueing");
-                                    // Just retry once: enqueue self.
-                                    let _ = state.matcher.enqueue_or_match(peer_id, &req).await;
-                                    let _ = tx.send(ServerToClient::Queued);
+                                let other_prefs = state.peers.get_prefs(matched.other_peer);
+                                match (other_tx, other_prefs) {
+                                    (Some(other_tx), Some(other_prefs)) => {
+                                        let my_lang = req.primary_speaks();
+                                        let partner_lang = other_prefs.primary_speaks();
+                                        // Partner: was waiting, becomes the offerer.
+                                        let _ = other_tx.send(ServerToClient::MatchFound {
+                                            room_id: matched.room_id.clone(),
+                                            should_offer: true,
+                                            my_speaks: partner_lang.clone(),
+                                            partner_speaks: my_lang.clone(),
+                                        });
+                                        // Me: answerer.
+                                        let _ = tx.send(ServerToClient::MatchFound {
+                                            room_id: matched.room_id,
+                                            should_offer: false,
+                                            my_speaks: my_lang,
+                                            partner_speaks: partner_lang,
+                                        });
+                                    }
+                                    _ => {
+                                        warn!(?matched, "matched peer no longer connected, requeueing");
+                                        let _ = state.matcher.enqueue_or_match(peer_id, &req).await;
+                                        let _ = tx.send(ServerToClient::Queued);
+                                    }
                                 }
                             }
                             Ok(None) => {
@@ -138,6 +182,30 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                             &current_room,
                             peer_id,
                             ServerToClient::IceCandidate { candidate },
+                        );
+                    }
+                    ClientToServer::Subtitle {
+                        id,
+                        original,
+                        translated,
+                        lang_original,
+                        lang_translated,
+                        ts,
+                        is_final,
+                    } => {
+                        forward(
+                            &state.rooms,
+                            &current_room,
+                            peer_id,
+                            ServerToClient::Subtitle {
+                                id,
+                                original,
+                                translated,
+                                lang_original,
+                                lang_translated,
+                                ts,
+                                is_final,
+                            },
                         );
                     }
                 }

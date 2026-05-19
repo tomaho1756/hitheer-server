@@ -13,9 +13,7 @@ export async function fetchIceServers(): Promise<RTCIceServer[]> {
   const servers: RTCIceServer[] = [DEFAULT_STUN];
   try {
     const base = process.env.NEXT_PUBLIC_SIGNALING_HTTP ??
-      (typeof window !== "undefined"
-        ? `${window.location.protocol}//${window.location.hostname}:8787`
-        : "");
+      (typeof window !== "undefined" ? window.location.origin : "");
     const res = await fetch(`${base}/turn-credentials`, {
       headers: { "ngrok-skip-browser-warning": "1" },
     });
@@ -82,17 +80,23 @@ export async function attachLocalMedia(pc: RTCPeerConnection): Promise<LocalMedi
   let stream: MediaStream | null = null;
   let note: string | undefined;
 
+  const audioConstraints: MediaTrackConstraints = {
+    noiseSuppression: true,
+    echoCancellation: true,
+    autoGainControl: true,
+  };
+
   try {
     stream = await tryGet({
       video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: true,
+      audio: audioConstraints,
     });
   } catch (e) {
     const err = e as DOMException;
     note = `camera unavailable (${err.name}); trying audio only`;
     console.warn(note, err);
     try {
-      stream = await tryGet({ video: false, audio: true });
+      stream = await tryGet({ video: false, audio: audioConstraints });
       note = "running in audio-only mode";
     } catch (e2) {
       const err2 = e2 as DOMException;

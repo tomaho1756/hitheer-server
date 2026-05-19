@@ -11,12 +11,15 @@ pub const ANY: &str = "*";
 
 #[derive(Debug, Clone)]
 pub struct MatchRequest {
-    /// Languages the user can speak.
     pub speaks: Vec<String>,
-    /// Languages the user wants to practice.
     pub wants: Vec<String>,
-    /// If true, also consider partners from the global pool (any language).
     pub allow_any: bool,
+}
+
+impl MatchRequest {
+    pub fn primary_speaks(&self) -> String {
+        self.speaks.first().cloned().unwrap_or_else(|| "en".to_string())
+    }
 }
 
 #[derive(Debug)]
@@ -25,22 +28,28 @@ pub struct Matched {
     pub other_peer: PeerId,
 }
 
-/// Tracks which Tx channel belongs to which peer, so the Lua script can return a
-/// peer id and we can resolve it back to a live sender.
 #[derive(Default)]
 pub struct PeerRegistry {
-    inner: Mutex<HashMap<PeerId, Tx>>,
+    txs: Mutex<HashMap<PeerId, Tx>>,
+    prefs: Mutex<HashMap<PeerId, MatchRequest>>,
 }
 
 impl PeerRegistry {
     pub fn register(&self, id: PeerId, tx: Tx) {
-        self.inner.lock().unwrap().insert(id, tx);
+        self.txs.lock().unwrap().insert(id, tx);
     }
     pub fn unregister(&self, id: PeerId) {
-        self.inner.lock().unwrap().remove(&id);
+        self.txs.lock().unwrap().remove(&id);
+        self.prefs.lock().unwrap().remove(&id);
     }
     pub fn get(&self, id: PeerId) -> Option<Tx> {
-        self.inner.lock().unwrap().get(&id).cloned()
+        self.txs.lock().unwrap().get(&id).cloned()
+    }
+    pub fn set_prefs(&self, id: PeerId, req: MatchRequest) {
+        self.prefs.lock().unwrap().insert(id, req);
+    }
+    pub fn get_prefs(&self, id: PeerId) -> Option<MatchRequest> {
+        self.prefs.lock().unwrap().get(&id).cloned()
     }
 }
 
@@ -55,8 +64,6 @@ impl Matcher {
         Ok(Self { redis: mgr })
     }
 
-    /// Atomically: try to pop a partner from any counterpart pool; if none, add self to all
-    /// candidate pools. Counterpart for "I speak ko, want en" is "speak en, want ko".
     pub async fn enqueue_or_match(
         &self,
         peer_id: PeerId,
@@ -95,7 +102,6 @@ impl Matcher {
     }
 }
 
-/// Pools the user joins when waiting. Each (one of speaks, one of wants) becomes a key.
 fn pool_names_self(speaks: &[String], wants: &[String], allow_any: bool) -> Vec<String> {
     let mut out = Vec::new();
     for s in speaks {
@@ -115,8 +121,6 @@ fn pool_names_self(speaks: &[String], wants: &[String], allow_any: bool) -> Vec<
     out
 }
 
-/// Counterpart pools to search when looking for a partner.
-/// If I am `s->w`, my partner is `w->s` (they speak my desired language and want mine).
 fn pool_names_counterpart(speaks: &[String], wants: &[String], allow_any: bool) -> Vec<String> {
     let mut out = Vec::new();
     for s in speaks {
@@ -125,7 +129,6 @@ fn pool_names_counterpart(speaks: &[String], wants: &[String], allow_any: bool) 
         }
     }
     if allow_any {
-        // Partners who marked themselves as flexible should match too.
         for s in speaks {
             out.push(format!("pool:{ANY}->{s}"));
         }
@@ -137,8 +140,6 @@ fn pool_names_counterpart(speaks: &[String], wants: &[String], allow_any: bool) 
     out
 }
 
-/// Lua script — keeps match-or-enqueue atomic. ARGV is used (not KEYS) so that
-/// we can pass an arbitrary number of pool names without enumerating them up front.
 const MATCH_LUA: &str = r#"
 local peer = ARGV[1]
 local counterparts = {}

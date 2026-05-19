@@ -1,0 +1,22 @@
+# Build + push only. Use cloudbuild.yaml for combined build+deploy once
+# secrets are in Secret Manager.
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - apps/signaling/Dockerfile
+      - -t
+      - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/hithere-signaling:$BUILD_ID
+      - -t
+      - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/hithere-signaling:latest
+      - .
+
+images:
+  - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/hithere-signaling:latest
+  - asia-northeast3-docker.pkg.dev/$PROJECT_ID/hithere/hithere-signaling:$BUILD_ID
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8

@@ -1,0 +1,61 @@
+# Firebase App Hosting config — hithere web (Next.js).
+# Apply with:
+#   firebase apphosting:backends:create --project hitheer-app --location asia-east1
+#   firebase apphosting:rollouts:create <BACKEND_ID>
+#
+# Or wire up GitHub auto-deploys via the Firebase console
+# (Build → App Hosting → Add backend → connect repo → root: apps/web).
+
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 10
+  concurrency: 80
+  timeoutSeconds: 60
+
+env:
+  # ---- public (NEXT_PUBLIC_*) — baked into the client bundle at build ----
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: firebase-api-key
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: hitheer-app.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: hitheer-app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: hitheer-app.appspot.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    secret: firebase-messaging-sender-id
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: firebase-app-id
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ---- signaling backend (Cloud Run) ----
+  # Fill in once the signaling Cloud Run service is deployed.
+  - variable: NEXT_PUBLIC_SIGNALING_URL
+    value: wss://signaling.hithere.dedyn.io/ws
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_SIGNALING_HTTP
+    value: https://signaling.hithere.dedyn.io
+    availability:
+      - BUILD
+      - RUNTIME
