@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -180,8 +180,7 @@ export function MobilePromo() {
               boxShadow: "inset 0 0 0 1px rgba(3,199,90,0.25)",
             }}
           >
-            <BoltIcon />
-            Powered by OpenAI Realtime
+            ⚡ Powered by OpenAI Realtime
           </div>
           <h1
             ref={heroLine1Ref}
@@ -230,22 +229,19 @@ export function MobilePromo() {
           <SectionTitle>뭐가 다른가요?</SectionTitle>
           <FeatureCard
             tint="#e8f8ee"
-            iconColor="#03C75A"
-            icon={<GlobeIcon />}
+            emoji="🌐"
             title="실시간 번역"
             desc="OpenAI Realtime API. 토큰 단위로 자막이 흘러내려요."
           />
           <FeatureCard
             tint="#eef0ff"
-            iconColor="#5b6cff"
-            icon={<VideoIcon />}
+            emoji="🎬"
             title="P2P 영상 통화"
             desc="WebRTC로 직접 연결. 서버 안 거쳐서 지연도 낮음."
           />
           <FeatureCard
             tint="#fff3e8"
-            iconColor="#e8810f"
-            icon={<DocIcon />}
+            emoji="📝"
             title="자동 기록"
             desc="원문 + 번역 모두 저장. 나중에 다시 보면서 복습."
           />
@@ -268,23 +264,20 @@ export function MobilePromo() {
           <SectionTitle>이런 때 써보세요</SectionTitle>
           <UseCaseRow
             tag="여행"
-            iconColor="#5b6cff"
             tint="#eef0ff"
-            icon={<PlaneIcon />}
+            emoji="✈️"
             body="외국 친구한테 링크 보내고 모국어 그대로 수다"
           />
           <UseCaseRow
             tag="학습"
-            iconColor="#03C75A"
             tint="#e8f8ee"
-            icon={<ChatIcon />}
+            emoji="🗣️"
             body="원어민과 매칭 → 실전 회화 + 자막 피드백"
           />
           <UseCaseRow
             tag="업무"
-            iconColor="#e8810f"
             tint="#fff3e8"
-            icon={<BriefcaseIcon />}
+            emoji="💼"
             body="다국적 미팅. 대화 기록은 회의록 초안"
           />
         </section>
@@ -384,14 +377,12 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function FeatureCard({
   tint,
-  iconColor,
-  icon,
+  emoji,
   title,
   desc,
 }: {
   tint: string;
-  iconColor: string;
-  icon: ReactNode;
+  emoji: string;
   title: string;
   desc: string;
 }) {
@@ -411,18 +402,19 @@ function FeatureCard({
     >
       <div
         style={{
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           borderRadius: 12,
           background: tint,
-          color: iconColor,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          fontSize: 28,
+          lineHeight: 1,
           flexShrink: 0,
         }}
       >
-        {icon}
+        {emoji}
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>{title}</div>
@@ -437,14 +429,12 @@ function FeatureCard({
 function UseCaseRow({
   tag,
   tint,
-  iconColor,
-  icon,
+  emoji,
   body,
 }: {
   tag: string;
   tint: string;
-  iconColor: string;
-  icon: ReactNode;
+  emoji: string;
   body: string;
 }) {
   return (
@@ -463,18 +453,19 @@ function UseCaseRow({
     >
       <div
         style={{
-          width: 38,
-          height: 38,
+          width: 42,
+          height: 42,
           borderRadius: 10,
           background: tint,
-          color: iconColor,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          fontSize: 24,
+          lineHeight: 1,
           flexShrink: 0,
         }}
       >
-        {icon}
+        {emoji}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -531,68 +522,7 @@ function StatCell({ value, label }: { value: string; label: string }) {
   );
 }
 
-// ─── Icons (line style, currentColor) ──────────────────────────
-function BoltIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
-    </svg>
-  );
-}
-function GlobeIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-    </svg>
-  );
-}
-function VideoIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="2.5" y="6" width="13" height="12" rx="2.2" />
-      <path d="m15.5 10 6-3v10l-6-3z" />
-    </svg>
-  );
-}
-function DocIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-      <path d="M14 3v5h5M9 13h6M9 17h4" />
-    </svg>
-  );
-}
-function PlaneIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M22 12 3 19l3-7-3-7z" />
-      <path d="M6 12h16" />
-    </svg>
-  );
-}
-function ChatIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
-      <path d="M8.5 12h.01M12 12h.01M15.5 12h.01" />
-    </svg>
-  );
-}
-function BriefcaseIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="7" width="18" height="13" rx="2" />
-      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
-    </svg>
-  );
-}
+// ─── Icons ──────────────────────────
 function ArrowRightIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"

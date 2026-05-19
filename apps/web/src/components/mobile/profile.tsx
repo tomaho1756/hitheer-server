@@ -108,25 +108,7 @@ export function MobileProfile() {
 function SignedOutView({ onSignIn, onSignUp }: { onSignIn: () => void; onSignUp: () => void }) {
   return (
     <div style={{ textAlign: "center", padding: "60px 16px" }}>
-      <div
-        style={{
-          width: 64,
-          height: 64,
-          margin: "0 auto 16px",
-          borderRadius: 20,
-          background: "linear-gradient(135deg, #e8f8ee 0%, #d6f1e2 100%)",
-          color: T.accentDeep,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21v-1a8 8 0 0 1 16 0v1" />
-        </svg>
-      </div>
+      <div style={{ fontSize: 56, marginBottom: 14, lineHeight: 1 }}>🙋</div>
       <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: T.text }}>
         로그인이 필요해요
       </h2>

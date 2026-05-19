@@ -171,14 +171,14 @@ export function MobileHome() {
             primary
             disabled={!canMatch || !hydrated}
             onClick={startRandomMatch}
-            icon={<ShuffleIcon />}
+            icon="🎲"
             title="랜덤 매칭"
             sub="대기 풀에서 자동으로 연결"
           />
           <BigButton
             disabled={!canMatch || !hydrated}
             onClick={startNewRoom}
-            icon={<DoorIcon />}
+            icon="🚪"
             title="방 만들기"
             sub="링크 공유 · 회의용"
           />
@@ -260,7 +260,7 @@ function BigButton({
   primary?: boolean;
   disabled?: boolean;
   onClick: () => void;
-  icon: React.ReactNode;
+  icon: string;
   title: string;
   sub: string;
 }) {
@@ -297,14 +297,15 @@ function BigButton({
     >
       <div
         style={{
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           borderRadius: 12,
           background: primary && !disabled ? "rgba(255,255,255,0.18)" : T.accentSoft,
-          color: primary && !disabled ? "white" : T.accentDeep,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          fontSize: 28,
+          lineHeight: 1,
           flexShrink: 0,
         }}
       >
@@ -319,20 +320,3 @@ function BigButton({
   );
 }
 
-function ShuffleIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M16 3h5v5M4 20l17-17M21 16v5h-5M15 15l6 6M4 4l5 5" />
-    </svg>
-  );
-}
-
-function DoorIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M14 12h.01" />
-    </svg>
-  );
-}
