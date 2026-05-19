@@ -1,4 +1,4 @@
-import type { IceCandidatePayload } from "@hithere/shared";
+import type { IceCandidatePayload } from "./protocol";
 
 interface TurnCredentials {
   username: string;

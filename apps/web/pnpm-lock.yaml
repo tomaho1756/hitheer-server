@@ -6,9 +6,7 @@ settings:
 
 importers:
 
-  .: {}
-
-  apps/web:
+  .:
     dependencies:
       firebase:
         specifier: ^12.13.0
@@ -35,8 +33,6 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
-
-  packages/shared: {}
 
 packages:
 
@@ -502,8 +498,8 @@ packages:
     resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
     engines: {node: '>=8'}
 
-  caniuse-lite@1.0.30001792:
-    resolution: {integrity: sha512-hVLMUZFgR4JJ6ACt1uEESvQN1/dBVqPAKY0hgrV70eN3391K6juAfTjKZLKvOMsx8PxA7gsY1/tLMMTcfFLLpw==}
+  caniuse-lite@1.0.30001793:
+    resolution: {integrity: sha512-iwSsYWaCOoh26cV8NwNRViHlrfUvYsHDfRVcbtmw0Kg6PJIZZXwMkj1442FYLBGkeUf1juAsU3DTfxW579mrPA==}
 
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
@@ -593,8 +589,8 @@ packages:
     resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  protobufjs@7.5.9:
-    resolution: {integrity: sha512-Od4muIm3HW1AouyHF5lONOf1FWo3hY1NbFDoy191X9GzhpgW1clCoaFjfVs2rKJNFYpTNJbje4cbAIDBZJ63ZA==}
+  protobufjs@7.6.0:
+    resolution: {integrity: sha512-LtESOsMPTZgyYtwxhvdgdjGL0HmXEaRA/hVD6sol4zA60hVXXXP/SGmxnqDbgGE8gy7pYex7cym+5vYPcmaXBQ==}
     engines: {node: '>=12.0.0'}
 
   react-dom@19.2.6:
@@ -1024,7 +1020,7 @@ snapshots:
     dependencies:
       lodash.camelcase: 4.3.0
       long: 5.3.2
-      protobufjs: 7.5.9
+      protobufjs: 7.6.0
       yargs: 17.7.2
 
   '@img/colour@1.1.0':
@@ -1194,7 +1190,7 @@ snapshots:
     dependencies:
       color-convert: 2.0.1
 
-  caniuse-lite@1.0.30001792: {}
+  caniuse-lite@1.0.30001793: {}
 
   client-only@0.0.1: {}
 
@@ -1274,7 +1270,7 @@ snapshots:
     dependencies:
       '@next/env': 15.5.18
       '@swc/helpers': 0.5.15
-      caniuse-lite: 1.0.30001792
+      caniuse-lite: 1.0.30001793
       postcss: 8.4.31
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
@@ -1301,7 +1297,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  protobufjs@7.5.9:
+  protobufjs@7.6.0:
     dependencies:
       '@protobufjs/aspromise': 1.1.2
       '@protobufjs/base64': 1.1.2

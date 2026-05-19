@@ -1,4 +1,4 @@
-import type { ClientToServer, ServerToClient } from "@hithere/shared";
+import type { ClientToServer, ServerToClient } from "./protocol";
 
 export type SignalingHandler = (msg: ServerToClient) => void;
 

@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@hithere/shared"],
   allowedDevOrigins: ["192.168.0.35", "192.168.0.9", "192.168.219.102"],
   async rewrites() {
     return [
