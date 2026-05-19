@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { User } from "firebase/auth";
 
 import { getFirebaseAuth, firebaseConfigured } from "./firebase";
+import { syncPrefsForUser } from "./languages";
 
 interface AuthState {
   user: User | null;
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = auth.onAuthStateChanged((u) => {
       setUser(u);
       setReady(true);
+      if (u) void syncPrefsForUser(u.uid);
     });
     return () => unsub();
   }, [configured]);

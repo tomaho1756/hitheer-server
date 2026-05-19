@@ -1,3 +1,15 @@
+"use client";
+
+import {
+  doc,
+  getDoc,
+  getFirestore,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+
+import { getFirebaseApp } from "./firebase";
+
 export interface Language {
   code: string;
   label: string;
@@ -40,4 +52,51 @@ export function loadPrefs(): LanguagePrefs {
 export function savePrefs(p: LanguagePrefs): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(KEY, JSON.stringify(p));
+}
+
+// ─── Firestore-backed (per-user) prefs ─────────────────────────────
+// Stored at `users/{uid}` with fields { speaks: string[], wants: string[],
+// updatedAt: serverTimestamp }. localStorage still mirrors it so guest mode
+// keeps working and the home page can render before Firestore returns.
+
+export async function loadUserPrefs(uid: string): Promise<LanguagePrefs | null> {
+  const app = getFirebaseApp();
+  if (!app) return null;
+  try {
+    const db = getFirestore(app);
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return null;
+    const data = snap.data() as Partial<LanguagePrefs>;
+    return {
+      speaks: Array.isArray(data.speaks) ? data.speaks : [],
+      wants: Array.isArray(data.wants) ? data.wants : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function saveUserPrefs(uid: string, p: LanguagePrefs): Promise<void> {
+  const app = getFirebaseApp();
+  if (!app) return;
+  const db = getFirestore(app);
+  await setDoc(
+    doc(db, "users", uid),
+    { speaks: p.speaks, wants: p.wants, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+// Helper: read from Firestore if signed in, otherwise localStorage.
+// If Firestore has data we mirror it into localStorage so the home picker
+// is pre-filled instantly next render.
+export async function syncPrefsForUser(uid: string | undefined): Promise<LanguagePrefs> {
+  if (!uid) return loadPrefs();
+  const remote = await loadUserPrefs(uid);
+  if (remote && (remote.speaks.length || remote.wants.length)) {
+    savePrefs(remote);
+    return remote;
+  }
+  // No remote yet — push local to remote on next save.
+  return loadPrefs();
 }

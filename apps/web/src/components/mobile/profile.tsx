@@ -5,6 +5,7 @@ import { signOut } from "firebase/auth";
 
 import { useAuth } from "@/lib/auth-context";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { LanguageSettings } from "@/components/language-settings";
 
 import { MobileFrame } from "./frame";
 
@@ -51,25 +52,52 @@ export function MobileProfile() {
               name={user.displayName || user.email?.split("@")[0] || "사용자"}
               email={user.email ?? ""}
             />
+            <div style={{ marginBottom: 18 }}>
+              <LanguageSettings variant="card" layout="dropdown" />
+            </div>
             <Section title="설정">
               <Row label="알림" hint="(준비 중)" disabled />
-              <Row label="언어 선호도" hint="홈에서 변경" disabled />
               <Row label="대화 기록 관리" hint="(준비 중)" disabled />
             </Section>
             <Section title="계정">
               <Row label="이메일" hint={user.email ?? "—"} disabled />
               <RowButton label="로그아웃" onClick={handleSignOut} tone="danger" />
             </Section>
-            <p
+            <div
               style={{
-                color: T.textFaint,
-                fontSize: 11,
+                marginTop: 28,
                 textAlign: "center",
-                marginTop: 30,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              hithere · v0.1.0 (beta)
-            </p>
+              <a
+                href="https://github.com/tomaho1756"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  background: "rgba(15,23,42,0.05)",
+                  color: T.textMuted,
+                  textDecoration: "none",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                }}
+              >
+                <GithubIcon />
+                Made by{" "}
+                <strong style={{ color: T.text, fontWeight: 800 }}>@tomaho1756</strong>
+              </a>
+              <span style={{ color: T.textFaint, fontSize: 10.5 }}>
+                TOMAHO · hithere v0.1.0 (beta)
+              </span>
+            </div>
           </>
         )}
       </div>
@@ -80,7 +108,25 @@ export function MobileProfile() {
 function SignedOutView({ onSignIn, onSignUp }: { onSignIn: () => void; onSignUp: () => void }) {
   return (
     <div style={{ textAlign: "center", padding: "60px 16px" }}>
-      <div style={{ fontSize: 44, marginBottom: 14 }}>🙋</div>
+      <div
+        style={{
+          width: 64,
+          height: 64,
+          margin: "0 auto 16px",
+          borderRadius: 20,
+          background: "linear-gradient(135deg, #e8f8ee 0%, #d6f1e2 100%)",
+          color: T.accentDeep,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21v-1a8 8 0 0 1 16 0v1" />
+        </svg>
+      </div>
       <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: T.text }}>
         로그인이 필요해요
       </h2>
@@ -265,6 +311,14 @@ function Row({
         {hint}
       </span>
     </div>
+  );
+}
+
+function GithubIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.8.1-.8.1-.8 1.3.1 1.9 1.3 1.9 1.3 1.1 1.9 3 1.4 3.7 1 .1-.8.4-1.4.8-1.7-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.6.1-3.3 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.2 3 .1 3.3.8.8 1.3 1.9 1.3 3.2 0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
+    </svg>
   );
 }
 
