@@ -1275,8 +1275,9 @@ function MatchSection() {
     return () => ctx.revert();
   }, []);
 
-  const toggle = (list: string[], setList: (v: string[]) => void, code: string) => {
-    setList(list.includes(code) ? list.filter((c) => c !== code) : [...list, code]);
+  const pick = (current: string[], setter: (v: string[]) => void, code: string) => {
+    // Single-select: tap same code to clear, otherwise replace.
+    setter(current[0] === code ? [] : [code]);
   };
 
   const canMatch = speaks.length > 0 && wants.length > 0;
@@ -1360,19 +1361,20 @@ function MatchSection() {
               lineHeight: 1.55,
             }}
           >
-            언어를 고르고 매칭 또는 방 만들기를 선택하세요.
+            언어를 고르고 매칭 또는 방 만들기를 선택하세요. 가능 언어와 원하는 언어는{" "}
+            <strong style={{ color: TEXT }}>각각 1개만</strong> 선택할 수 있어요.
           </p>
         </div>
 
         <LangSection
-          title="내가 할 수 있는 언어"
+          title="내가 할 수 있는 언어 (1개)"
           codes={speaks}
-          toggle={(c) => toggle(speaks, setSpeaks, c)}
+          onPick={(c) => pick(speaks, setSpeaks, c)}
         />
         <LangSection
-          title="연습하고 싶은 언어"
+          title="연습하고 싶은 언어 (1개)"
           codes={wants}
-          toggle={(c) => toggle(wants, setWants, c)}
+          onPick={(c) => pick(wants, setWants, c)}
         />
 
         <div
@@ -1478,11 +1480,11 @@ function ModeButton({
 function LangSection({
   title,
   codes,
-  toggle,
+  onPick,
 }: {
   title: string;
   codes: string[];
-  toggle: (code: string) => void;
+  onPick: (code: string) => void;
 }) {
   return (
     <section style={{ marginTop: 22 }}>
@@ -1504,7 +1506,7 @@ function LangSection({
           return (
             <button
               key={l.code}
-              onClick={() => toggle(l.code)}
+              onClick={() => onPick(l.code)}
               style={{
                 padding: "8px 14px",
                 background: selected ? ACCENT : SURFACE,
@@ -1793,8 +1795,39 @@ function Footer() {
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>hithere</span>
         </div>
-        <div style={{ fontSize: 12, color: TEXT_MUTED }}>
-          © 2026 hithere — 실시간 번역 영상 통화
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <span style={{ fontSize: 12, color: TEXT_MUTED }}>
+            © 2026 hithere — 실시간 번역 영상 통화
+          </span>
+          <a
+            href="https://github.com/tomaho1756"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: TEXT_MUTED,
+              textDecoration: "none",
+              padding: "5px 10px",
+              borderRadius: 999,
+              background: "rgba(15,23,42,0.04)",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.8.1-.8.1-.8 1.3.1 1.9 1.3 1.9 1.3 1.1 1.9 3 1.4 3.7 1 .1-.8.4-1.4.8-1.7-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.6.1-3.3 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.2 3 .1 3.3.8.8 1.3 1.9 1.3 3.2 0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
+            </svg>
+            Made by <strong style={{ fontWeight: 700, color: TEXT }}>@tomaho1756</strong>
+          </a>
         </div>
       </div>
     </footer>
