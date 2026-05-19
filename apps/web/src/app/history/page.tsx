@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { listConversations, type ConversationSummary } from "@/lib/conversations";
 import { useAuth } from "@/lib/auth-context";
@@ -16,18 +17,31 @@ const TEXT_MUTED = "#65676b";
 
 export default function HistoryPage() {
   const { user, ready } = useAuth();
+  const router = useRouter();
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
+    if (!user) {
+      router.replace("/signin?next=/history");
+      return;
+    }
     setLoading(true);
-    listConversations(user?.uid)
+    listConversations(user.uid)
       .then(setItems)
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [ready, user]);
+  }, [ready, user, router]);
+
+  if (!ready || !user) {
+    return (
+      <main style={{ padding: 40, textAlign: "center", color: TEXT_MUTED, fontSize: 13 }}>
+        로그인 확인 중…
+      </main>
+    );
+  }
 
   return (
     <>
