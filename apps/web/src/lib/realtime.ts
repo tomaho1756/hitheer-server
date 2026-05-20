@@ -2,13 +2,18 @@
  * OpenAI Realtime API client (WebRTC mode).
  *
  * Flow:
- *  1. POST /realtime-session on our signaling server → ephemeral { client_secret, model }.
- *  2. Open an RTCPeerConnection to OpenAI, add the user's mic track, attach a data channel
- *     named "oai-events" for control + transcription/translation events.
- *  3. createOffer → POST it as SDP to https://api.openai.com/v1/realtime?model=... with the
- *     ephemeral key in Authorization → set the returned SDP as remote answer.
- *  4. Forward each completed transcription / translation pair to the caller.
+ *  1. POST /realtime-session on our signaling server (with Firebase ID token) →
+ *     ephemeral { client_secret, model, session_id, plan, remaining_seconds }.
+ *  2. Open an RTCPeerConnection to OpenAI, add the user's mic track, attach a data
+ *     channel named "oai-events" for control + transcription/translation events.
+ *  3. createOffer → POST it as SDP to OpenAI with the ephemeral key.
+ *  4. While the data channel is open, send POST /realtime-session/heartbeat every
+ *     15s. If the server returns throttle=true (quota exhausted) we self-close
+ *     and notify via onQuotaExceeded.
+ *  5. On close(): POST /realtime-session/close so the server logs a final tick.
  */
+
+import { getIdToken } from "./auth-context";
 
 export interface RealtimeSubtitleEvent {
   id: string;
@@ -27,7 +32,16 @@ export interface RealtimeHandle {
 interface SessionResponse {
   model: string;
   client_secret: { value: string };
+  session_id: string;
+  plan: string;
+  remaining_seconds: number | null;
 }
+
+export interface QuotaExceededError extends Error {
+  code: "quota_exceeded";
+}
+
+const HEARTBEAT_INTERVAL_MS = 15_000;
 
 function signalingHttpBase(): string {
   return (
@@ -36,15 +50,31 @@ function signalingHttpBase(): string {
   );
 }
 
-async function fetchSession(speakerLang: string, partnerLang: string): Promise<SessionResponse> {
+export interface GlossaryEntry {
+  term: string;
+  translation?: string;
+}
+
+async function fetchSession(
+  speakerLang: string,
+  partnerLang: string,
+  glossary: GlossaryEntry[] | undefined
+): Promise<SessionResponse> {
+  const idToken = await getIdToken();
   const res = await fetch(`${signalingHttpBase()}/realtime-session`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "ngrok-skip-browser-warning": "1",
+      ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
     },
-    body: JSON.stringify({ speakerLang, partnerLang }),
+    body: JSON.stringify({ speakerLang, partnerLang, glossary: glossary ?? [] }),
   });
+  if (res.status === 402) {
+    const err = new Error("translation_quota_exceeded") as QuotaExceededError;
+    err.code = "quota_exceeded";
+    throw err;
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`realtime-session failed: ${res.status} ${text}`);
@@ -52,15 +82,64 @@ async function fetchSession(speakerLang: string, partnerLang: string): Promise<S
   return (await res.json()) as SessionResponse;
 }
 
+export interface UsageSummary {
+  plan: string;
+  used_seconds: number;
+  remaining_seconds: number | null;
+  daily_limit_seconds: number | null;
+}
+
+export async function fetchUsageToday(): Promise<UsageSummary | null> {
+  const idToken = await getIdToken();
+  if (!idToken) return null;
+  try {
+    const res = await fetch(`${signalingHttpBase()}/usage/today`, {
+      headers: {
+        authorization: `Bearer ${idToken}`,
+        "ngrok-skip-browser-warning": "1",
+      },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as UsageSummary;
+  } catch {
+    return null;
+  }
+}
+
+async function postLifecycle(path: "heartbeat" | "close", session_id: string) {
+  if (!session_id) return null;
+  try {
+    const res = await fetch(`${signalingHttpBase()}/realtime-session/${path}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "ngrok-skip-browser-warning": "1",
+      },
+      body: JSON.stringify({ session_id }),
+      keepalive: path === "close",
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function startRealtime(opts: {
   micStream: MediaStream;
   speakerLang: string;
   partnerLang: string;
+  glossary?: GlossaryEntry[];
   onSubtitle: (e: RealtimeSubtitleEvent) => void;
   onError?: (err: Error) => void;
+  /** Fired with each heartbeat result so the call UI can show remaining time. */
+  onUsage?: (u: { used_seconds: number; remaining_seconds: number | null }) => void;
+  /** Fired when the server says we've blown today's quota; UI should turn off translation. */
+  onQuotaExceeded?: () => void;
 }): Promise<RealtimeHandle> {
-  const session = await fetchSession(opts.speakerLang, opts.partnerLang);
+  const session = await fetchSession(opts.speakerLang, opts.partnerLang, opts.glossary);
   const ek = session.client_secret.value;
+  const sessionId = session.session_id;
 
   const pc = new RTCPeerConnection();
 
@@ -242,16 +321,60 @@ export async function startRealtime(opts: {
   const answer = await sdpResp.text();
   await pc.setRemoteDescription({ type: "answer", sdp: answer });
 
-  return {
-    close: () => {
-      try {
-        dc.close();
-      } catch {}
-      pc.getSenders().forEach((s) => {
-        // Don't stop the shared mic track here — the call page owns its lifecycle.
-        if (s.track && s.track !== audioTrack) s.track.stop();
-      });
-      pc.close();
-    },
+  // Heartbeat: charge usage every 15s while translation is active.
+  let closed = false;
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+  const stopHeartbeat = () => {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   };
+
+  const doClose = () => {
+    if (closed) return;
+    closed = true;
+    stopHeartbeat();
+    if (sessionId) {
+      // Fire-and-forget — keepalive ensures the request survives page unload.
+      void postLifecycle("close", sessionId);
+    }
+    try {
+      dc.close();
+    } catch {}
+    pc.getSenders().forEach((s) => {
+      if (s.track && s.track !== audioTrack) s.track.stop();
+    });
+    pc.close();
+  };
+
+  if (sessionId) {
+    heartbeatTimer = setInterval(async () => {
+      const result = (await postLifecycle("heartbeat", sessionId)) as
+        | {
+            used_seconds: number;
+            remaining_seconds: number | null;
+            throttle: boolean;
+          }
+        | null;
+      if (!result) return;
+      opts.onUsage?.({
+        used_seconds: result.used_seconds,
+        remaining_seconds: result.remaining_seconds,
+      });
+      if (result.throttle) {
+        opts.onQuotaExceeded?.();
+        doClose();
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+  }
+
+  // Emit initial usage so UI has values immediately.
+  opts.onUsage?.({
+    used_seconds: 0,
+    remaining_seconds: session.remaining_seconds,
+  });
+
+  return { close: doClose };
 }

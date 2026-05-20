@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { SignalingClient, signalingUrl } from "@/lib/signaling";
@@ -12,6 +12,7 @@ import {
   setTrackEnabled,
 } from "@/lib/peer";
 import { startRealtime, type RealtimeHandle, type RealtimeSubtitleEvent } from "@/lib/realtime";
+import { loadGlossary } from "@/lib/glossary";
 import { loadPrefs } from "@/lib/languages";
 import { getIdToken, useAuth } from "@/lib/auth-context";
 import { saveConversation as persistConversation } from "@/lib/conversations";
@@ -57,6 +58,8 @@ export default function CallPage() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const realtimeRef = useRef<RealtimeHandle | null>(null);
+  const translationOnRef = useRef(true);
+  const startTranslationRef = useRef<(() => Promise<void>) | null>(null);
   const pendingIce = useRef<RTCIceCandidateInit[]>([]);
   const restartAttempts = useRef(0);
   const isPolite = useRef(false);
@@ -98,6 +101,12 @@ export default function CallPage() {
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
   const [subtitles, setSubtitles] = useState<SubtitleLine[]>([]);
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
+  const [translationOn, setTranslationOn] = useState(true);
+  const [usage, setUsage] = useState<{
+    used_seconds: number;
+    remaining_seconds: number | null;
+  } | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   const latestPeerSubtitle =
     [...subtitles].reverse().find((s) => s.who === "peer") ?? null;
@@ -192,8 +201,18 @@ export default function CallPage() {
         t.onunmute = recompute;
         t.onended = recompute;
       }
-      stream.onaddtrack = recompute;
+      stream.onaddtrack = (e) => {
+        recompute();
+        // Audio track just landed — kick off translation if the user wants it.
+        if (e.track.kind === "audio" && translationOnRef.current) {
+          void startTranslationRef.current?.();
+        }
+      };
       stream.onremovetrack = recompute;
+      // If audio is already present at wire-time (rare but possible) start now.
+      if (stream.getAudioTracks().length && translationOnRef.current) {
+        void startTranslationRef.current?.();
+      }
     };
 
     const tryRecover = async (pc: RTCPeerConnection) => {
@@ -480,45 +499,8 @@ export default function CallPage() {
       conversationStartRef.current = Date.now();
       signaling.send({ type: "join", roomId: currentRoomIdRef.current });
 
-      // Start realtime translator (lives for the whole session, not per-peer).
-      if (
-        localStreamRef.current?.getAudioTracks().length &&
-        mySpeaks &&
-        partnerSpeaks
-      ) {
-        try {
-          const handle = await startRealtime({
-            micStream: localStreamRef.current,
-            speakerLang: mySpeaks,
-            partnerLang: partnerSpeaks,
-            onSubtitle: (e: RealtimeSubtitleEvent) => {
-              pushSubtitle({
-                id: `me-${e.id}`,
-                who: "me",
-                original: e.original,
-                translated: e.translated,
-                langOriginal: e.langOriginal,
-                langTranslated: e.langTranslated,
-                ts: e.ts,
-                final: e.final,
-              });
-              signalingRef.current?.send({ type: "subtitle", ...e });
-            },
-            onError: (err) => {
-              appendLog(`realtime: ${err.message}`);
-              setRealtimeError(err.message);
-            },
-          });
-          realtimeRef.current = handle;
-          appendLog(`realtime translator started (${mySpeaks} → ${partnerSpeaks})`);
-        } catch (e) {
-          const msg = (e as Error).message;
-          appendLog(`realtime start failed: ${msg}`);
-          setRealtimeError(msg);
-        }
-      } else if (!mySpeaks || !partnerSpeaks) {
-        appendLog("realtime skipped: missing language info");
-      }
+      // Realtime translator is now driven by the peer's audio track —
+      // see wireRemoteStream above. Nothing to start here at join time.
     };
 
     void start();
@@ -542,6 +524,98 @@ export default function CallPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mySpeaks, partnerSpeaks, phase]);
 
+
+  // Keep refs in sync with state so the start-effect (which runs once per phase
+  // entry) can read the latest value without re-running.
+  useEffect(() => {
+    translationOnRef.current = translationOn;
+  }, [translationOn]);
+
+  // Extracted so both initial start and manual toggle can call it.
+  //
+  // Translation model: I consume the PEER's incoming audio and translate it
+  // into MY language. The toggle is a CONSUMER toggle — turning it off only
+  // stops translation that I see; the peer can still see translation of my
+  // speech if they have their own toggle on (their client does the same
+  // thing on their side). This matches the user's mental model: "번역 끄는
+  // 거면 상대방이 말하는 걸 번역하지 않는다."
+  const doStartTranslation = useCallback(async () => {
+    if (realtimeRef.current) return; // already running
+    const peerStream = remoteStreamRef.current;
+    if (!peerStream || !peerStream.getAudioTracks().length) {
+      appendLog("realtime deferred: peer audio not ready yet");
+      return;
+    }
+    if (!mySpeaks || !partnerSpeaks) {
+      appendLog("realtime skipped: missing language info");
+      return;
+    }
+    try {
+      const handle = await startRealtime({
+        // Input = peer's audio. Source language = what peer speaks. Output
+        // language = my language so I can read it.
+        micStream: peerStream,
+        speakerLang: partnerSpeaks,
+        partnerLang: mySpeaks,
+        glossary: loadGlossary(),
+        onSubtitle: (e: RealtimeSubtitleEvent) => {
+          pushSubtitle({
+            id: `peer-${e.id}`,
+            who: "peer",
+            original: e.original,
+            translated: e.translated,
+            langOriginal: e.langOriginal,
+            langTranslated: e.langTranslated,
+            ts: e.ts,
+            final: e.final,
+          });
+        },
+        onError: (err) => {
+          appendLog(`realtime: ${err.message}`);
+          setRealtimeError(err.message);
+        },
+        onUsage: (u) => setUsage(u),
+        onQuotaExceeded: () => {
+          setQuotaExceeded(true);
+          setTranslationOn(false);
+          realtimeRef.current = null;
+        },
+      });
+      realtimeRef.current = handle;
+      setRealtimeError(null);
+      appendLog(`realtime translator started (peer ${partnerSpeaks} → ${mySpeaks})`);
+    } catch (e) {
+      const err = e as Error & { code?: string };
+      if (err.code === "quota_exceeded") {
+        setQuotaExceeded(true);
+        setTranslationOn(false);
+        return;
+      }
+      appendLog(`realtime start failed: ${err.message}`);
+      setRealtimeError(err.message);
+    }
+  }, [mySpeaks, partnerSpeaks]);
+
+  // Expose via ref so the start-effect can call without dep churn.
+  useEffect(() => {
+    startTranslationRef.current = doStartTranslation;
+  }, [doStartTranslation]);
+
+  const stopTranslation = () => {
+    realtimeRef.current?.close();
+    realtimeRef.current = null;
+  };
+
+  const toggleTranslation = async () => {
+    if (translationOn) {
+      setTranslationOn(false);
+      stopTranslation();
+    } else {
+      setQuotaExceeded(false);
+      setTranslationOn(true);
+      await doStartTranslation();
+    }
+  };
 
   const toggleMic = () => {
     const next = !micOn;
@@ -729,6 +803,7 @@ export default function CallPage() {
               {mySpeaks.toUpperCase()} → {partnerSpeaks.toUpperCase()}
             </span>
           )}
+          <QuotaChip usage={usage} translationOn={translationOn} dark />
           <span style={{ color: statusColor(status), fontWeight: 600 }}>
             {statusLabel(status)}
           </span>
@@ -948,6 +1023,12 @@ export default function CallPage() {
             icon={camOn ? <Icon.Video /> : <Icon.VideoOff />}
           />
           <MobileCtrlBtn
+            on={translationOn}
+            onClick={() => void toggleTranslation()}
+            label={translationOn ? "번역 끔" : "번역 켬"}
+            icon={<Icon.Translate />}
+          />
+          <MobileCtrlBtn
             on
             danger
             onClick={leave}
@@ -1085,6 +1166,7 @@ export default function CallPage() {
                 {mySpeaks.toUpperCase()} → {partnerSpeaks.toUpperCase()}
               </span>
             )}
+            <QuotaChip usage={usage} translationOn={translationOn} />
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -1266,12 +1348,19 @@ export default function CallPage() {
           tone={isScreenSharing ? "accent" : "neutral"}
         />
         <ControlBtn
+          onClick={() => void toggleTranslation()}
+          icon={<Icon.Translate />}
+          tooltip={translationOn ? "translation off" : "translation on"}
+          tone={translationOn ? "accent" : "neutral"}
+        />
+        <ControlBtn
           onClick={leave}
           icon={<Icon.PhoneOff />}
           tooltip="leave"
           tone="danger"
         />
       </footer>
+
 
       <details>
         <summary
@@ -1301,7 +1390,121 @@ export default function CallPage() {
           {log.join("\n")}
         </pre>
       </details>
+      <QuotaModal
+        open={quotaExceeded}
+        onClose={() => setQuotaExceeded(false)}
+      />
     </main>
+  );
+}
+
+function QuotaModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const router = useRouter();
+  if (!open) return null;
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.6)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 60,
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: 380,
+          width: "100%",
+          background: "#ffffff",
+          borderRadius: 18,
+          padding: 26,
+          boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            margin: "0 auto 14px",
+            borderRadius: 28,
+            background: "linear-gradient(135deg, #03C75A 0%, #5ee49b 100%)",
+            color: "white",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 28,
+            fontWeight: 800,
+            boxShadow: "0 10px 26px rgba(3,199,90,0.45)",
+          }}
+        >
+          ⏳
+        </div>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: "#18191a" }}>
+          오늘 번역 한도를 다 썼어요
+        </h2>
+        <p
+          style={{
+            marginTop: 8,
+            fontSize: 13.5,
+            color: "#65676b",
+            lineHeight: 1.55,
+          }}
+        >
+          번역만 잠시 꺼졌어요. 영상/음성 통화는 그대로 이어집니다.
+          <br />
+          더 길게 쓰려면 플랜을 업그레이드해보세요.
+        </p>
+        <div
+          style={{
+            marginTop: 18,
+            display: "flex",
+            gap: 8,
+            justifyContent: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            onClick={() => router.push("/pricing")}
+            style={{
+              padding: "10px 20px",
+              background: "linear-gradient(135deg, #03C75A 0%, #04a04a 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: 999,
+              fontWeight: 800,
+              fontSize: 13.5,
+              cursor: "pointer",
+              boxShadow: "0 8px 22px rgba(3,199,90,0.35)",
+              fontFamily: "inherit",
+            }}
+          >
+            요금제 보기
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "10px 20px",
+              background: "#f0f2f6",
+              color: "#18191a",
+              border: "none",
+              borderRadius: 999,
+              fontWeight: 700,
+              fontSize: 13.5,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1986,6 +2189,88 @@ const T = {
   shadowLg: "0 6px 18px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06)",
 };
 
+function QuotaChip({
+  usage,
+  translationOn,
+  dark = false,
+}: {
+  usage: { used_seconds: number; remaining_seconds: number | null } | null;
+  translationOn: boolean;
+  dark?: boolean;
+}) {
+  if (!usage) return null;
+  const label =
+    usage.remaining_seconds === null
+      ? "무제한"
+      : `${formatRemaining(usage.remaining_seconds)} 남음`;
+  const lowWarn =
+    usage.remaining_seconds !== null && usage.remaining_seconds < 5 * 60;
+  const off = !translationOn;
+
+  const bg = dark
+    ? off
+      ? "rgba(255,255,255,0.10)"
+      : lowWarn
+      ? "rgba(245,158,11,0.22)"
+      : "rgba(3,199,90,0.20)"
+    : off
+    ? "#eef0f4"
+    : lowWarn
+    ? "#fef3c7"
+    : "#e8f8ee";
+  const fg = dark
+    ? off
+      ? "rgba(255,255,255,0.65)"
+      : lowWarn
+      ? "#fde68a"
+      : "#a8e0bb"
+    : off
+    ? "#65676b"
+    : lowWarn
+    ? "#92400e"
+    : "#02a949";
+
+  return (
+    <span
+      title={
+        off
+          ? "번역 OFF — 시간 카운트 안 됨"
+          : "오늘 남은 번역 시간 (켜져 있는 동안만 차감)"
+      }
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "2px 9px",
+        background: bg,
+        color: fg,
+        borderRadius: 999,
+        fontWeight: 700,
+        fontSize: 11.5,
+        letterSpacing: 0.2,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+      {off ? `OFF · ${label}` : label}
+    </span>
+  );
+}
+
+function formatRemaining(seconds: number): string {
+  if (seconds <= 0) return "0분";
+  if (seconds < 60) return `${Math.max(1, seconds)}초`;
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return `${m}분`;
+  // ≥ 1 hour — show in hour units only, rounded down. e.g. 1h05m → "1시간".
+  const h = Math.floor(m / 60);
+  return `${h}시간`;
+}
+
 const Icon = {
   Mic: ({ size = 22 }: { size?: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -2074,6 +2359,14 @@ const Icon = {
       <path d="M12 7v6m-3-3 3-3 3 3" />
       <line x1="8" x2="16" y1="21" y2="21" />
       <line x1="12" x2="12" y1="17" y2="21" />
+    </svg>
+  ),
+  Translate: ({ size = 22 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5h7M9 3v2c0 4.4-2 7.5-6 9" />
+      <path d="M4 9c0 3 2.5 6 7 7" />
+      <path d="m13 20 4-9 4 9" />
+      <path d="M14.5 17h5" />
     </svg>
   ),
 };
