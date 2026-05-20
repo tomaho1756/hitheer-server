@@ -6,6 +6,7 @@ mod protocol;
 mod realtime;
 mod rooms;
 mod turn;
+mod usage;
 mod ws;
 
 use std::net::SocketAddr;
@@ -22,6 +23,7 @@ use crate::matching::{Matcher, PeerRegistry};
 use crate::realtime::RealtimeConfig;
 use crate::rooms::Rooms;
 use crate::turn::TurnConfig;
+use crate::usage::UsageStore;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -32,6 +34,7 @@ pub struct AppState {
     pub realtime: Arc<RealtimeConfig>,
     pub db: Db,
     pub auth: FirebaseAuth,
+    pub usage: UsageStore,
 }
 
 #[tokio::main]
@@ -78,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::warn!("Firebase verification disabled (FIREBASE_PROJECT_ID not set); accepting anonymous peers");
     }
 
+    let usage = UsageStore::new(db.clone());
     let state = AppState {
         rooms: Rooms::new(),
         matcher: Arc::new(matcher),
@@ -86,12 +90,19 @@ async fn main() -> anyhow::Result<()> {
         realtime: Arc::new(realtime_cfg),
         db,
         auth: firebase,
+        usage,
     };
 
     let app = Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/turn-credentials", get(turn::turn_credentials))
         .route("/realtime-session", post(realtime::realtime_session))
+        .route(
+            "/realtime-session/heartbeat",
+            post(realtime::realtime_heartbeat),
+        )
+        .route("/realtime-session/close", post(realtime::realtime_close))
+        .route("/usage/today", get(realtime::usage_today))
         .route("/retranslate", post(realtime::retranslate))
         .route("/conversations", post(conversations::save).get(conversations::list))
         .route("/conversations/:id", get(conversations::detail))

@@ -75,5 +75,21 @@ pub async fn connect(path: &str) -> anyhow::Result<Db> {
     .execute(&pool)
     .await?;
 
+    // Per-user daily translation usage. `day` is YYYY-MM-DD UTC — new row per
+    // day means natural reset at midnight without an explicit cleanup job.
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS user_usage (
+            uid             TEXT NOT NULL,
+            day             TEXT NOT NULL,
+            seconds_used    INTEGER NOT NULL DEFAULT 0,
+            plan_at_time    TEXT NOT NULL DEFAULT 'free',
+            PRIMARY KEY (uid, day)
+        );
+        "#,
+    )
+    .execute(&pool)
+    .await?;
+
     Ok(pool)
 }

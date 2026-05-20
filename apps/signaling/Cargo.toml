@@ -25,6 +25,8 @@ sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio",
 jsonwebtoken = "9"
 tokio-util = "0.7"
 thiserror = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+rand = "0.8"
 
 [[bin]]
 name = "hithere-signaling"

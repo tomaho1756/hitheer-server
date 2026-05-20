@@ -38,6 +38,9 @@ pub struct Claims {
     pub name: Option<String>,
     pub picture: Option<String>,
     pub exp: usize,
+    // Stripe-driven custom claim. Set by the Next.js webhook on every
+    // subscription state change. Falls back to "free" when missing.
+    pub plan: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +48,41 @@ pub struct VerifiedUser {
     pub uid: String,
     pub email: Option<String>,
     pub name: Option<String>,
+    pub plan: Plan,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Plan {
+    Free,
+    Pro,
+    Professional,
+}
+
+impl Plan {
+    pub fn from_claim(s: Option<&str>) -> Self {
+        match s.unwrap_or("free") {
+            "pro" => Self::Pro,
+            "professional" => Self::Professional,
+            _ => Self::Free,
+        }
+    }
+
+    /// Daily translation seconds budget. `None` = unlimited.
+    pub fn daily_limit_seconds(self) -> Option<i64> {
+        match self {
+            Self::Free => Some(30 * 60),
+            Self::Pro => Some(5 * 60 * 60),
+            Self::Professional => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Free => "free",
+            Self::Pro => "pro",
+            Self::Professional => "professional",
+        }
+    }
 }
 
 impl FirebaseAuth {
@@ -89,10 +127,12 @@ impl FirebaseAuth {
             }
         };
 
+        let plan = Plan::from_claim(data.claims.plan.as_deref());
         Ok(VerifiedUser {
             uid: data.claims.sub,
             email: data.claims.email,
             name: data.claims.name,
+            plan,
         })
     }
 
