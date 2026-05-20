@@ -5,6 +5,8 @@ build
 target
 .env
 .env.local
+.env.local.bak
+.env.local.bak.*
 .DS_Store
 *.log
 .turbo
