@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { acquireLocalMedia, setTrackEnabled } from "@/lib/peer";
+import { loadGlossary, saveGlossary } from "@/lib/glossary";
+import type { GlossaryEntry } from "@/lib/realtime";
 
 const ACCENT = "#03C75A";
 const ACCENT_DEEP = "#02a949";
@@ -296,6 +298,8 @@ export function Lobby({ mySpeaks, partnerSpeaks, roomId, isHost, onJoin }: Lobby
             onChange={setVideoDeviceId}
             disabled={acquiring || !hasVideo}
           />
+
+          <GlossarySection />
 
           {error && (
             <div
@@ -601,3 +605,143 @@ function CamOffIcon({ size = 22 }: { size?: number }) {
     </svg>
   );
 }
+
+function GlossarySection() {
+  const [open, setOpen] = useState(false);
+  const [entries, setEntries] = useState<GlossaryEntry[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setEntries(loadGlossary());
+    setHydrated(true);
+  }, []);
+
+  const commit = (next: GlossaryEntry[]) => {
+    setEntries(next);
+    saveGlossary(next);
+  };
+
+  const addRow = () => commit([...entries, { term: "", translation: "" }]);
+  const removeRow = (i: number) =>
+    commit(entries.filter((_, idx) => idx !== i));
+  const updateRow = (i: number, patch: Partial<GlossaryEntry>) =>
+    commit(entries.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
+
+  return (
+    <details
+      open={open}
+      onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
+      style={{
+        marginTop: 18,
+        padding: "10px 12px",
+        background: SURFACE_ALT,
+        borderRadius: 12,
+      }}
+    >
+      <summary
+        style={{
+          cursor: "pointer",
+          listStyle: "none",
+          fontSize: 13,
+          fontWeight: 700,
+          color: TEXT,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span>
+          용어집{" "}
+          <span style={{ color: TEXT_MUTED, fontWeight: 500 }}>
+            (선택 · {entries.filter((e) => e.term.trim()).length}개)
+          </span>
+        </span>
+        <span style={{ color: TEXT_MUTED, fontSize: 12 }}>
+          {open ? "▾" : "▸"}
+        </span>
+      </summary>
+      <p
+        style={{
+          margin: "8px 0 10px",
+          fontSize: 11.5,
+          color: TEXT_MUTED,
+          lineHeight: 1.5,
+        }}
+      >
+        고유명사 · 회사명 · 약어처럼 자동 번역을 막고 싶은 단어를 등록하세요.
+        번역을 비워두면 원문 그대로 유지합니다.
+      </p>
+      {hydrated &&
+        entries.map((e, i) => (
+          <div
+            key={i}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr auto",
+              gap: 6,
+              marginBottom: 6,
+            }}
+          >
+            <input
+              value={e.term}
+              onChange={(ev) => updateRow(i, { term: ev.target.value })}
+              placeholder="단어"
+              style={glossaryInput}
+            />
+            <input
+              value={e.translation ?? ""}
+              onChange={(ev) => updateRow(i, { translation: ev.target.value })}
+              placeholder="번역 (선택)"
+              style={glossaryInput}
+            />
+            <button
+              type="button"
+              onClick={() => removeRow(i)}
+              style={{
+                padding: "0 10px",
+                background: "transparent",
+                color: DANGER,
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                fontSize: 14,
+                fontFamily: "inherit",
+              }}
+              aria-label="제거"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      <button
+        type="button"
+        onClick={addRow}
+        style={{
+          marginTop: 6,
+          padding: "7px 12px",
+          background: SURFACE,
+          color: TEXT,
+          border: `1px dashed ${BORDER}`,
+          borderRadius: 8,
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        + 단어 추가
+      </button>
+    </details>
+  );
+}
+
+const glossaryInput: React.CSSProperties = {
+  padding: "7px 10px",
+  background: SURFACE,
+  color: TEXT,
+  border: `1px solid ${BORDER}`,
+  borderRadius: 8,
+  fontSize: 12.5,
+  fontFamily: "inherit",
+  outline: "none",
+};
