@@ -61,3 +61,39 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+  # ---- site origin (used by Stripe Checkout success/cancel + API CORS) ----
+  - variable: NEXT_PUBLIC_SITE_ORIGIN
+    value: https://hithere.dedyn.io
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ---- Stripe ----
+  # Sandbox keys for beta. Swap STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET +
+  # both price IDs to live values via `firebase apphosting:secrets:set` once
+  # the business is registered. No code change needed.
+  - variable: STRIPE_SECRET_KEY
+    secret: stripe-secret-key
+    availability:
+      - RUNTIME
+  - variable: STRIPE_WEBHOOK_SECRET
+    secret: stripe-webhook-secret
+    availability:
+      - RUNTIME
+  - variable: STRIPE_PRICE_PRO
+    value: price_1TZ0DdFa4gLk0wOQDEWaYgDr
+    availability:
+      - RUNTIME
+  - variable: STRIPE_PRICE_PROFESSIONAL
+    value: price_1TZ0DeFa4gLk0wOQrfC61QCc
+    availability:
+      - RUNTIME
+
+  # ---- Firebase Admin SDK ----
+  # Service-account JSON (full file content). Used by /api/stripe/webhook +
+  # /api/friends/* to bypass Firestore rules and verify ID tokens.
+  - variable: FIREBASE_ADMIN_SA_JSON
+    secret: firebase-admin-sa-json
+    availability:
+      - RUNTIME
