@@ -131,6 +131,9 @@ function NavBar() {
               <NavLink href="#how" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
                 사용법
               </NavLink>
+              <NavLink href="/pricing" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
+                요금제
+              </NavLink>
               <NavLink href="/history" color={scrolled ? TEXT_MUTED : "rgba(255,255,255,0.8)"}>
                 기록
               </NavLink>
@@ -1804,6 +1807,17 @@ function Footer() {
             justifyContent: "flex-end",
           }}
         >
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            <Link href="/pricing" style={{ fontSize: 12, color: TEXT_MUTED, textDecoration: "none" }}>
+              요금제
+            </Link>
+            <Link href="/terms" style={{ fontSize: 12, color: TEXT_MUTED, textDecoration: "none" }}>
+              이용약관
+            </Link>
+            <Link href="/privacy" style={{ fontSize: 12, color: TEXT_MUTED, textDecoration: "none" }}>
+              개인정보
+            </Link>
+          </div>
           <span style={{ fontSize: 12, color: TEXT_MUTED }}>
             © 2026 hithere — 실시간 번역 영상 통화
           </span>

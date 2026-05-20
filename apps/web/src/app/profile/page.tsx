@@ -6,6 +6,7 @@ import { signOut } from "firebase/auth";
 
 import { MobileProfile } from "@/components/mobile/profile";
 import { LanguageSettings } from "@/components/language-settings";
+import { PlanCard } from "@/components/plan-card";
 import { useAuth } from "@/lib/auth-context";
 import { getFirebaseAuth } from "@/lib/firebase";
 
@@ -15,6 +16,15 @@ const TEXT = "#18191a";
 const TEXT_MUTED = "#65676b";
 const CARD_SHADOW =
   "0 1px 2px rgba(15,23,42,0.04), 0 6px 22px rgba(15,23,42,0.06)";
+
+const docLinkStyle: React.CSSProperties = {
+  fontSize: 13,
+  color: TEXT_MUTED,
+  textDecoration: "none",
+  padding: "6px 12px",
+  borderRadius: 999,
+  background: "rgba(15,23,42,0.05)",
+};
 
 export default function ProfilePage() {
   return (
@@ -151,6 +161,10 @@ function DesktopProfile() {
           </section>
 
           <section style={{ marginBottom: 18 }}>
+            <PlanCard />
+          </section>
+
+          <section style={{ marginBottom: 18 }}>
             <LanguageSettings variant="card" />
           </section>
 
@@ -164,6 +178,42 @@ function DesktopProfile() {
               gap: 12,
               alignItems: "center",
               justifyContent: "space-between",
+              marginBottom: 10,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>친구</div>
+              <div style={{ marginTop: 2, fontSize: 12, color: TEXT_MUTED }}>
+                이메일로 친구 추가, 친구방에서 바로 통화 시작
+              </div>
+            </div>
+            <Link
+              href="/friends"
+              style={{
+                padding: "8px 16px",
+                background: "#e8f8ee",
+                color: ACCENT,
+                borderRadius: 999,
+                textDecoration: "none",
+                fontWeight: 700,
+                fontSize: 12.5,
+              }}
+            >
+              열기
+            </Link>
+          </section>
+
+          <section
+            style={{
+              background: SURFACE,
+              borderRadius: 14,
+              padding: 18,
+              boxShadow: CARD_SHADOW,
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 18,
             }}
           >
             <div>
@@ -186,6 +236,19 @@ function DesktopProfile() {
             >
               열기
             </Link>
+          </section>
+
+          <section
+            style={{
+              display: "flex",
+              gap: 14,
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            <Link href="/pricing" style={docLinkStyle}>요금제</Link>
+            <Link href="/terms" style={docLinkStyle}>이용약관</Link>
+            <Link href="/privacy" style={docLinkStyle}>개인정보처리방침</Link>
           </section>
 
           <div

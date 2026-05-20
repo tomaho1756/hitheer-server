@@ -16,6 +16,36 @@ const SURFACE = "#ffffff";
 const TEXT = "#18191a";
 const TEXT_MUTED = "#65676b";
 
+function MenuLink({
+  href,
+  onClick,
+  children,
+}: {
+  href: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      style={{
+        display: "block",
+        padding: "8px 10px",
+        fontSize: 12.5,
+        color: TEXT,
+        textDecoration: "none",
+        borderRadius: 6,
+        fontWeight: 500,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = ACCENT_SOFT)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function AccountPill({ returnTo = "/" }: { returnTo?: string }) {
   const { user, ready, configured } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -157,37 +187,35 @@ export function AccountPill({ returnTo = "/" }: { returnTo?: string }) {
             <div style={{ padding: "8px 10px 6px", fontSize: 11, color: TEXT_MUTED }}>
               {user.email}
             </div>
-            <Link
-              href="/history"
-              onClick={() => setMenuOpen(false)}
-              style={{
-                display: "block",
-                padding: "7px 10px",
-                fontSize: 12.5,
-                color: TEXT,
-                textDecoration: "none",
-                borderRadius: 6,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = ACCENT_SOFT)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              📜 대화 기록
-            </Link>
+            <MenuLink href="/profile" onClick={() => setMenuOpen(false)}>
+              프로필
+            </MenuLink>
+            <MenuLink href="/history" onClick={() => setMenuOpen(false)}>
+              대화 기록
+            </MenuLink>
+            <MenuLink href="/friends" onClick={() => setMenuOpen(false)}>
+              친구
+            </MenuLink>
+            <MenuLink href="/pricing" onClick={() => setMenuOpen(false)}>
+              요금제
+            </MenuLink>
+            <div style={{ height: 1, background: BORDER, margin: "4px 6px" }} />
             <button
               onClick={handleSignOut}
               style={{
                 display: "block",
                 width: "100%",
                 textAlign: "left",
-                padding: "7px 10px",
+                padding: "8px 10px",
                 fontSize: 12.5,
-                color: TEXT,
+                color: "#dc2626",
                 background: "transparent",
                 border: "none",
                 borderRadius: 6,
                 cursor: "pointer",
+                fontFamily: "inherit",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = ACCENT_SOFT)}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               로그아웃

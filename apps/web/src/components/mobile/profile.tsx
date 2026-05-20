@@ -3,9 +3,12 @@
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 
+import Link from "next/link";
+
 import { useAuth } from "@/lib/auth-context";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { LanguageSettings } from "@/components/language-settings";
+import { PlanCard } from "@/components/plan-card";
 
 import { MobileFrame } from "./frame";
 
@@ -53,15 +56,24 @@ export function MobileProfile() {
               email={user.email ?? ""}
             />
             <div style={{ marginBottom: 18 }}>
+              <PlanCard />
+            </div>
+            <div style={{ marginBottom: 18 }}>
               <LanguageSettings variant="card" layout="dropdown" />
             </div>
             <Section title="설정">
+              <RowLink href="/friends" label="친구 관리" />
               <Row label="알림" hint="(준비 중)" disabled />
               <Row label="대화 기록 관리" hint="(준비 중)" disabled />
             </Section>
             <Section title="계정">
               <Row label="이메일" hint={user.email ?? "—"} disabled />
               <RowButton label="로그아웃" onClick={handleSignOut} tone="danger" />
+            </Section>
+            <Section title="문서">
+              <RowLink href="/pricing" label="요금제" />
+              <RowLink href="/terms" label="이용약관" />
+              <RowLink href="/privacy" label="개인정보처리방침" />
             </Section>
             <div
               style={{
@@ -293,6 +305,27 @@ function Row({
         {hint}
       </span>
     </div>
+  );
+}
+
+function RowLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "14px 14px",
+        boxShadow: "inset 0 -1px 0 rgba(15,23,42,0.05)",
+        color: T.text,
+        textDecoration: "none",
+        fontSize: 14,
+      }}
+    >
+      <span>{label}</span>
+      <span style={{ color: T.textMuted, fontSize: 16 }}>›</span>
+    </Link>
   );
 }
 
